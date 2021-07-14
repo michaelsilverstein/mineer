@@ -1,2 +1,2 @@
 # minEER
-A sensible Sanger sequence trimming algorithm
+A sensible sequence trimming algorithm
