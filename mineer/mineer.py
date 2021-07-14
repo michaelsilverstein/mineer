@@ -4,21 +4,57 @@ minEER - A sequence trimming algorithm that seeks to minimize the expected error
 AUTHOR: MICHAEL SILVERSTEIN
 EMAIL: michael.silverstein4@gmail.com
 """
-import warnings
 import numpy as np
 from argparse import ArgumentParser, RawTextHelpFormatter
 from Bio.SeqRecord import SeqRecord
 
-class TrimObject:
-    """Class to manage sequence information"""
-    def __init__(self, Seq, trimstart, trimend):
-        """
-        Initialize SeqObject
-        """
-        self.untrimmed = Seq
-        self.trimstart = None
-        self.trimend = None
+class Untrimmed:
+    """A single untrimmed read"""
+    def __init__(self, seqrecord):
+        self.record = seqrecord
+        
+    @property
+    def phred(self):
+        """Extract phred quality scores"""
+        return self.record.letter_annotations['phred_quality']
+    
+    @property
+    def ee(self):
+        """Get expected error scores"""
+        return phred2ee(self.phred)
+
+class Trimmed(Untrimmed):
+    """A single trimmed read"""
+    def __init__(self, seqrecord):
+        self.record = seqrecord
+    
+class Read:
+    """Untrimmed and Trimmed data on read"""
+    def __init__(self, seqrecord: SeqRecord, mal: int =100, mae: float=1e-3):
+        self.untrimmed = Untrimmed(seqrecord)
+        self.mal = mal
+        self.mae = mae
+        self.pass_qc = None
         self.trimmed = None
+    
+    @property
+    def trimpos(self):
+        """Get trim positions using minEER"""
+        return minEER(self.untrimmed.ee, self.mal, self.mae)
+    
+    def trim(self):
+        """Trim read using minEER"""
+        # Get trim positions using minEER
+        trimstart, trimend = self.trimpos
+        # Check if QC is passed 
+        if (trimstart is None) & (trimend is None):
+            self.pass_qc = False
+        else:
+            self.pass_qc = True
+            # Trim sequence
+            trimmed_seqrecord = self.untrimmed.record[trimstart: trimend + 1]
+            self.trimmed = Trimmed(trimmed_seqrecord)
+        
 
 
 def minEER(ee, mal=100, mae=1e-3):
@@ -62,7 +98,7 @@ def minEER(ee, mal=100, mae=1e-3):
         # Find longest subsequence
         max_idx = np.argmax(end_ids - start_ids)
         start_pos, end_pos = start_ids[max_idx], end_ids[max_idx]
-    return start_pos, end_pos
+    return start_pos, end_pos 
 
 def phred2ee(phred):
     """
@@ -73,45 +109,15 @@ def phred2ee(phred):
     ee = np.power(10, -phred / 10)
     return ee
 
-def trim(Seq, mal=100, mae=1e-3):
-    """
-    Trims sequence object `Seq` according to parameters `mal` and `mae`
-    Inputs:
-    | Seq <Bio.SeqRecord>: Sequence object
-    | mal <int>: Minimum acceptable length
-    | mae <float>: Minimum acceptable expected error rate
-    Outputs:
-    | Trimmed <Bio.Seq>: Trimmed sequence object
-    """
-    # Check for SeqRecord
-    if not isinstance(Seq, SeqRecord):
-        raise TypeError('"Seq" must be a BioPython SeqRecord object.\n'
-                        'Read the docs on how to load a SeqRecord here: https://biopython.org/wiki/SeqIO')
-    # Check to see that sequence contains PHRED score
-    annot = Seq.letter_annotations
-    if 'phred_quality' in annot:
-        phred = annot['phred_quality']
-        # Convert to expected error
-        ee = phred2ee(phred)
-        # Implement minEER to get trimming indices
-        trimstart, trimend = minEER(ee, mal, mae)
-        # Trim
-        trimmed = Seq[trimstart: trimend]
-    else:
-        warnings.warn('Sequence "%s" does not contain a phred score - '
-                      'it cannot be trimmed and will be returned as is.' % Seq.id)
-        trimmed = Seq
-    return trimmed
-
-if __name__ == '__main__':
-    parser = ArgumentParser(formatter_class=RawTextHelpFormatter)
-    parser.add_argument('-i', help='Input, type specified with -t', type=str, required=True)
-    parser.add_argument('-t', help='Input type:\n'
-                                   '\tfile: If -i is a path to a single file'
-                                   '\tdir: If -i is a path to a directory only containing files to trim'
-                                   '\tlist: If -i is a path to a list of paths of files to trim',
-                        choice=['file', 'dir', 'list'], type=str, required=True)
-    # TODO: allow per-file specificiation (could have input be CSV with filepath and format)
-    parser.add_argument('-f', help='File format of file(s) passed in -i', required=True)
-    parser.add_argument('-o', help='Output directory\n'
-                                   'Output files will be named as /output_dir/{original_name}_trimmed.{extension}')
+# if __name__ == '__main__':
+#     parser = ArgumentParser(formatter_class=RawTextHelpFormatter)
+#     parser.add_argument('-i', help='Input, type specified with -t', type=str, required=True)
+#     parser.add_argument('-t', help='Input type:\n'
+#                                    '\tfile: If -i is a path to a single file'
+#                                    '\tdir: If -i is a path to a directory only containing files to trim'
+#                                    '\tlist: If -i is a path to a list of paths of files to trim',
+#                         choice=['file', 'dir', 'list'], type=str, required=True)
+#     # TODO: allow per-file specificiation (could have input be CSV with filepath and format)
+#     parser.add_argument('-f', help='File format of file(s) passed in -i', required=True)
+#     parser.add_argument('-o', help='Output directory\n'
+#                                    'Output files will be named as /output_dir/{original_name}_trimmed.{extension}')
