@@ -89,14 +89,14 @@ def trim(Seq, mal=100, mae=1e-3):
                         'Read the docs on how to load a SeqRecord here: https://biopython.org/wiki/SeqIO')
     # Check to see that sequence contains PHRED score
     annot = Seq.letter_annotations
-    if 'phred_qualty' in annot:
+    if 'phred_quality' in annot:
         phred = annot['phred_quality']
         # Convert to expected error
         ee = phred2ee(phred)
         # Implement minEER to get trimming indices
-        trimstart, trimmed = minEER(ee, mal, mae)
+        trimstart, trimend = minEER(ee, mal, mae)
         # Trim
-        trimmed = Seq[trimstart: trimmed]
+        trimmed = Seq[trimstart: trimend]
     else:
         warnings.warn('Sequence "%s" does not contain a phred score - '
                       'it cannot be trimmed and will be returned as is.' % Seq.id)
