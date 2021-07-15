@@ -91,24 +91,31 @@ class Read:
 
 class ReadPair:
     """A forward/rev read pair"""
-    def __init__(self, fwd_read, rev_read):
+    def __init__(self, fwd_read: Read, rev_read:Read = None):
         self.fwd_read = fwd_read
         self.rev_read = rev_read
     
     @functools.cached_property
     def bothpassing(self):
         """Check that both reads are passing"""
-        return self.fwd_read.pass_qc & self.rev_read.pass_qc
-        
+        # If not rev read
+        if self.rev_read:
+            check = self.fwd_read.pass_qc & self.rev_read.pass_qc
+        else:
+            check = self.fwd_read.pass_qc
+        return check
+
 class Sample:
     """A (paired) sample"""
     def __init__(self, name: str, fwd_file: File, rev_file: File=None):
         self.name = name
         self.fwd_file = fwd_file
-        self.rev_file = rev_file
-        # Collect readpairs for 
-        self.readpairs = [ReadPair(f, r) for f, r in zip(self.fwd_file.reads, self.rev_file.reads)]
-    
+        if rev_file:
+            self.rev_file = rev_file
+            # Collect readpairs for 
+            self.readpairs = [ReadPair(f, r) for f, r in zip(self.fwd_file.reads, self.rev_file.reads)]
+        else:
+            self.readpairs = [ReadPair(f) for f in self.fwd_file.reads]
 def phred2ee(phred):
     """
     Convert a Phred score to an expected error probability

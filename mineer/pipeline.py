@@ -122,6 +122,19 @@ class Project:
             self.rev_passing = len(rev_positions)/self.nreads
             self.rev_pos = self.aggfunc(rev_positions, 0)
 
+    def truncAll(self):
+        """
+        Truncate all reads using global positions
+        """
+        all_reads = self.fwd_reads.extend(self.rev_reads)
+        for r in all_reads:
+            truncpos = tuple(map(int, self.fwd_pos if r.file.direction == 'f' else self.rev_pos))
+            if not r.mineer:
+                r.trim(truncpos)
+            # If mineer has been run, but different position, re-trim
+            elif r.trimpos != truncpos:
+                r.trim(truncpos)
+
     def writeFile(self, file: File):
         """Write one file with truncated sequences"""
         # Generate output path
@@ -144,6 +157,11 @@ class Project:
                 truncated.append(r.trimmed.record)
         # Save
         SeqIO.write(truncated, outpath, 'fastq')
+    
+    def writeSample(self, sample: Sample):
+        """Write one sample, ensuring both pairs pass"""
+        # Gather passing readpairs
+        pass
             
     def writeFiles(self):
         """Write all truncated files"""
