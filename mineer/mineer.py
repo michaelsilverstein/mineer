@@ -5,71 +5,6 @@ AUTHOR: MICHAEL SILVERSTEIN
 EMAIL: michael.silverstein4@gmail.com
 """
 import numpy as np
-from Bio.SeqRecord import SeqRecord
-from Bio import SeqIO
-import os
-
-default_mal = 100
-default_mae = 1e-3
-
-class File:
-    """Fastq file"""
-    def __init__(self, filepath: str, mal: int=default_mal, mae: float=default_mae):
-        self.filepath = os.path.abspath(filepath)
-        self.mal = mal
-        self.mae = mae
-    @property
-    def reads(self):
-        """Load all reads"""
-        return [Read(r, self, self.mal, self.mae) for r in SeqIO.parse(self.filepath, 'fastq')]
-
-
-class Record:
-    """A single read"""
-    def __init__(self, seqrecord):
-        self.record = seqrecord
-    @property
-    def length(self):
-        """Read length"""
-        return len(self.record)
-        
-    @property
-    def phred(self):
-        """Extract phred quality scores"""
-        return self.record.letter_annotations['phred_quality']
-    
-    @property
-    def ee(self):
-        """Get expected error scores"""
-        return phred2ee(self.phred)
-    
-class Read:
-    """Untrimmed and Trimmed data on read"""
-    def __init__(self, seqrecord: SeqRecord, file: File, mal: int=default_mal, mae: float=default_mae):
-        self.untrimmed = Record(seqrecord)
-        self.file = file
-        self.mal = mal
-        self.mae = mae
-        self.pass_qc = None
-        self.trimmed = None
-    
-    @property
-    def trimpos(self):
-        """Get trim positions using minEER"""
-        return minEER(self.untrimmed.ee, self.mal, self.mae)
-    
-    def trim(self):
-        """Trim read using minEER"""
-        # Get trim positions using minEER
-        trimstart, trimend = self.trimpos
-        # Check if QC is passed 
-        if (trimstart is None) & (trimend is None):
-            self.pass_qc = False
-        else:
-            self.pass_qc = True
-            # Trim sequence
-            trimmed_seqrecord = self.untrimmed.record[trimstart: trimend + 1]
-            self.trimmed = Record(trimmed_seqrecord)
 
 def minEER(ee, mal=100, mae=1e-3):
     """
@@ -113,15 +48,6 @@ def minEER(ee, mal=100, mae=1e-3):
         max_idx = np.argmax(end_ids - start_ids)
         start_pos, end_pos = start_ids[max_idx], end_ids[max_idx]
     return start_pos, end_pos 
-
-def phred2ee(phred):
-    """
-    Convert a Phred score to an expected error probability
-    ee = 10 ^ (-P/10)
-    """
-    phred = np.array(phred)
-    ee = np.power(10, -phred / 10)
-    return ee
 
 # if __name__ == '__main__':
 #     parser = ArgumentParser(formatter_class=RawTextHelpFormatter)
