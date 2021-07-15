@@ -5,10 +5,25 @@ AUTHOR: MICHAEL SILVERSTEIN
 EMAIL: michael.silverstein4@gmail.com
 """
 import numpy as np
-from argparse import ArgumentParser, RawTextHelpFormatter
 from Bio.SeqRecord import SeqRecord
+from Bio import SeqIO
 
-class Untrimmed:
+default_mal = 100
+default_mae = 1e-3
+
+class File:
+    """Fastq file"""
+    def __init__(self, filepath: str, mal: int=default_mal, mae: float=default_mae):
+        self.filepath = filepath
+        self.mal = mal
+        self.mae = mae
+    @property
+    def reads(self):
+        """Load all reads"""
+        return [Read(r, self, self.mal, self.mae) for r in SeqIO.parse(self.filepath, 'fastq')]
+
+
+class Record:
     """A single untrimmed read"""
     def __init__(self, seqrecord):
         self.record = seqrecord
@@ -22,16 +37,12 @@ class Untrimmed:
     def ee(self):
         """Get expected error scores"""
         return phred2ee(self.phred)
-
-class Trimmed(Untrimmed):
-    """A single trimmed read"""
-    def __init__(self, seqrecord):
-        self.record = seqrecord
     
 class Read:
     """Untrimmed and Trimmed data on read"""
-    def __init__(self, seqrecord: SeqRecord, mal: int =100, mae: float=1e-3):
-        self.untrimmed = Untrimmed(seqrecord)
+    def __init__(self, seqrecord: SeqRecord, file: File, mal: int=default_mal, mae: float=default_mae):
+        self.untrimmed = Record(seqrecord)
+        self.file = file
         self.mal = mal
         self.mae = mae
         self.pass_qc = None
@@ -53,9 +64,7 @@ class Read:
             self.pass_qc = True
             # Trim sequence
             trimmed_seqrecord = self.untrimmed.record[trimstart: trimend + 1]
-            self.trimmed = Trimmed(trimmed_seqrecord)
-        
-
+            self.trimmed = Record(trimmed_seqrecord)
 
 def minEER(ee, mal=100, mae=1e-3):
     """
