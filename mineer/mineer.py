@@ -25,9 +25,13 @@ class File:
 
 
 class Record:
-    """A single untrimmed read"""
+    """A single read"""
     def __init__(self, seqrecord):
         self.record = seqrecord
+    @property
+    def length(self):
+        """Read length"""
+        return len(self.record)
         
     @property
     def phred(self):
