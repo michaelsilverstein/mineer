@@ -7,6 +7,7 @@ EMAIL: michael.silverstein4@gmail.com
 import numpy as np
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
+import os
 
 default_mal = 100
 default_mae = 1e-3
@@ -14,7 +15,7 @@ default_mae = 1e-3
 class File:
     """Fastq file"""
     def __init__(self, filepath: str, mal: int=default_mal, mae: float=default_mae):
-        self.filepath = filepath
+        self.filepath = os.path.abspath(filepath)
         self.mal = mal
         self.mae = mae
     @property
