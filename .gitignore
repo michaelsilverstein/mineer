@@ -1,0 +1,3 @@
+*.txt
+*.fastq*
+*.ipynb_checkpoints*
