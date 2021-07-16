@@ -37,7 +37,6 @@ class Record:
     @functools.cached_property
     def length(self):
         """Read length"""
-        self.length
         return len(self.record)
 
     @functools.cached_property
