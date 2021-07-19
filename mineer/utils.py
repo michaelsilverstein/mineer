@@ -1,7 +1,7 @@
 """
 minEER utilites
 """
-from typing import List, Tuple
+from typing import List
 from .mineer import minEER
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
