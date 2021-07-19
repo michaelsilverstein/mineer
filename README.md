@@ -9,3 +9,6 @@ Method:
 
 Assumptions:
 * Reads in paired files are ordered
+
+# Contributing
+Run tests with `python -m unittest`
