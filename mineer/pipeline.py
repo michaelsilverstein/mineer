@@ -4,10 +4,12 @@ minEER pipeline
 AUTHOR: MICHAEL SILVERSTEIN
 EMAIL: michael.silverstein4@gmail.com
 """
+import random
 from .utils import Project, default_nreads, default_mal, default_mae
+from argparse import ArgumentParser
 
 
-def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=default_mal, mae=default_mae, aggmethod: str='median', nreads=default_nreads, outdir=None):
+def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=default_mal, mae=default_mae, aggmethod: str='median', nreads=default_nreads, outdir=None, random_seed=None):
     """
     Leave `rev_format` blank for single read mode
 
@@ -18,6 +20,8 @@ def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=defau
     4) Truncate all reads to global positions and filter out read pairs that don't pass QC
     5) Save truncated sequences
     """
+    if random_seed:
+        random.seed(random_seed)
     # Create project
     print('Creating project...')
     project = Project(filepaths, fwd_format, rev_format, nreads, mal, mae, aggmethod, outdir)
@@ -36,3 +40,4 @@ def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=defau
     # 5) Save truncated sequences
     print('Saving truncated files...')
     project.writeFiles()
+    return project
