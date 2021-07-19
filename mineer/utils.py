@@ -8,9 +8,9 @@ from Bio import SeqIO
 import numpy as np
 import os, functools, random
 
-default_nreads = 10000
+default_nreads = 5000
 default_mal = 100
-default_mae = 1e-3
+default_mae = 1e-2
 
 class File:
     """Fastq file"""
@@ -79,11 +79,12 @@ class Read:
     def truncate(self, trimpos):
         """Truncate sequence given """
         trimstart, trimend = trimpos
+        trimlen = trimend - trimstart
         # Truncate
         trimmed_seqrecord = self.untrimmed.record[trimstart: trimend]
         self.trimmed = Record(trimmed_seqrecord)
         # Passes QC?
-        self.pass_qc = self.trimmed.ee.mean() <= self.mae
+        self.pass_qc = (self.trimmed.ee.mean() <= self.mae) & (self.trimmed.length == trimlen)
 
 
 class ReadPair:
@@ -176,6 +177,7 @@ class Project:
     * Record: A single SeqRecord with extracted data
     """
     def __init__(self, filepaths: list, fwd_format: str, rev_format: str=None, nreads: int=default_nreads, mal: int=default_mal, mae: float=default_mae, aggmethod: str='median', outdir: str=None):
+        #TODO: MAKE SURE ABSPATH WORKS
         self.filepaths = [os.path.abspath(f) for f in filepaths if any(map(lambda x: f.endswith(x), [fwd_format, rev_format]))]
         self.fwd_format = fwd_format
         self.rev_format = rev_format
@@ -203,7 +205,9 @@ class Project:
         self.all_sub = []
         # Global
         self.fwd_pos = None
+        self.fwd_len = None
         self.rev_pos = None
+        self.rev_len = None
         self.passing_readpairs = None
 
     @functools.cached_property
@@ -285,10 +289,12 @@ class Project:
         fwd_positions = [r.trimpos_mineer for r in self.fwd_sub if r.pass_qc_mineer]
         self.fwd_passing_sub = len(fwd_positions)/self.nreads
         self.fwd_pos = self.aggfunc(fwd_positions, 0).astype(int)
+        self.fwd_len = self.fwd_pos[1] - self.fwd_pos[0]
         if self.paired:
             rev_positions = [r.trimpos_mineer for r in self.rev_sub if r.pass_qc_mineer]
             self.rev_passing_sub = len(rev_positions)/self.nreads
             self.rev_pos = self.aggfunc(rev_positions, 0).astype(int)
+            self.rev_len = self.rev_pos[1] - self.rev_pos[0]
 
     def truncAndFilter(self):
         """Truncate all reads to global positions and indicate passing ReadPairs"""
