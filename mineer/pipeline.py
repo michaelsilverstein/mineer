@@ -43,7 +43,7 @@ def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=defau
     project.writeFiles()
     return project
 
-def mineer_cli():
+def mineer_cli(args=None):
     """Command line interface for running minEER"""
     parser = ArgumentParser(formatter_class=RawTextHelpFormatter, description=__doc__)
     parser.add_argument('-i', help='Path to directory containing all (unzipped!) fastq files for a single project', required=True)
@@ -60,4 +60,10 @@ def mineer_cli():
     parser.add_argument('-n', help='Number of reads to subsample per direction for computing truncation position. Default: %d' % default_nreads, type=int, default=default_nreads)
     parser.add_argument('-o', help='Output directory. Default: current working directory', default=os.getcwd())
 
-    args = parser.parse_args()
+    args = parser.parse_args(args)
+    
+    # Get filepaths
+    filepaths = [os.path.abspath(os.path.join(args.i, f)) for f in os.listdir(args.i)]
+
+    # Run pipeline
+    pipeline = truncPipeline(filepaths, args.f, args.r, args.mal, args.mae, args.m, args.n, args.o)

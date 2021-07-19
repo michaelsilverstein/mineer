@@ -178,7 +178,7 @@ class Project:
     """
     def __init__(self, filepaths: list, fwd_format: str, rev_format: str=None, nreads: int=default_nreads, mal: int=default_mal, mae: float=default_mae, aggmethod: str='median', outdir: str=None):
         #TODO: MAKE SURE ABSPATH WORKS
-        self.filepaths = [os.path.abspath(f) for f in filepaths if any(map(lambda x: f.endswith(x), [fwd_format, rev_format]))]
+        self.filepaths = [f for f in filepaths if any(map(lambda x: f.endswith(x), [fwd_format, rev_format]))]
         self.fwd_format = fwd_format
         self.rev_format = rev_format
         self.nreads = nreads

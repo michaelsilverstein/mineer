@@ -11,6 +11,6 @@ setuptools.setup(
     author='michaelsilverstein',
     author_email='michael.silverstein4@gmail.com',
     description='Automated sequence truncation algorithm',
-    packages=setuptools.find_packages(where="mineer"),
+    packages=['mineer'],
     long_description_content_type = "text/markdown",
 )

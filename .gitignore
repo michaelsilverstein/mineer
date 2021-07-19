@@ -2,3 +2,4 @@
 *.fastq*
 *.ipynb_checkpoints*
 .vscode*
+*egg-info*
