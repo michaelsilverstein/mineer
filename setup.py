@@ -1,5 +1,5 @@
 import setuptools
-from minEER import __version__
+from mineer import __version__
 
 setuptools.setup(
     name='mineer',
