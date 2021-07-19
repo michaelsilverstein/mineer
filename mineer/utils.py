@@ -1,7 +1,7 @@
 """
 minEER utilites
 """
-from typing import List
+from typing import List, Tuple
 from .mineer import minEER
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
@@ -74,7 +74,7 @@ class Read:
         trimpos_mineer = minEER(self.untrimmed.ee, self.mal, self.mae)
         self.trimpos_mineer = trimpos_mineer
         self.mineer = True
-        self.pass_qc_mineer = bool(trimpos_mineer[0])
+        self.pass_qc_mineer = not trimpos_mineer[0] is None
 
     def truncate(self, trimpos):
         """Truncate sequence given """
@@ -195,10 +195,12 @@ class Project:
         self.samples = None
         # Subset for minEER
         self.fwd_sub = None
+        self.fwd_n_tries = None
+        self.fwd_frac_passing = None
         self.rev_sub = None
+        self.rev_n_tries = None
+        self.rev_frac_passing = None
         self.all_sub = []
-        self.fwd_passing_sub = None
-        self.rev_passing_sub = None
         # Global
         self.fwd_pos = None
         self.rev_pos = None
@@ -240,19 +242,43 @@ class Project:
         Samples = [Sample(sample, files['f'], files['r']) for sample, files in samples.items()]
         self.samples = Samples
 
-    def sampleReads(self):
-        """Subsample `nreads` from (each) direction"""
-        self.fwd_sub = random.sample(self.fwd_reads, self.nreads)
+    def subsampleReads(self, reads: List[Read]):
+        """Subsample `nreads` and keep those that pass minEER"""
+        # Shuffle reads
+        random.shuffle(reads)
+
+        # Keep track of passing
+        read_count = 0
+        passing_reads = []
+
+        # Get passing reads until `nreads` is reached
+        for read in reads:
+            read_count += 1
+            read.runMineer()
+            if read.pass_qc_mineer:
+                passing_reads.append(read)
+            
+            # Break if `nreads` has been reached
+            if len(passing_reads) == self.nreads:
+                break
+        return read_count, passing_reads
+    
+    def subsampleAll(self):
+        """Subsample all reads up to `nreads` keeping those that pass minEER and recording fraction that pass"""
+        self.fwd_n_tries, self.fwd_sub = self.subsampleReads(self.fwd_reads)
+        self.fwd_frac_passing = len(self.fwd_sub) / self.fwd_n_tries
         self.all_sub.extend(self.fwd_sub)
         if self.paired:
-            self.rev_sub = random.sample(self.rev_reads, self.nreads)
+            self.rev_n_tries, self.rev_sub = self.subsampleReads(self.rev_reads)
+            self.rev_frac_passing = len(self.fwd_sub) / self.rev_n_tries
             self.all_sub.extend(self.rev_sub)
     
-    def mineerReads(self, reads: List[Read]):
-        """Run minEER on reads"""
-        for r in reads:
-            r.runMineer()
-    
+    def _reportPassingSubset(self):
+        report = f'From subset:\n\tForward reads passing: {len(self.fwd_sub)} /{self.fwd_n_tries} ({self.fwd_frac_passing * 100:.2f})%\n'
+        if self.paired:
+            report += f'\tReverse reads passing: {len(self.rev_sub)} /{self.rev_n_tries} ({self.rev_frac_passing * 100:.2f})%\n'
+        print(report)
+
     def calcPos(self):
         """Calculate global truncation positions from subset"""
         # Get forward trim positions
