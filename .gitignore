@@ -1,3 +1,4 @@
 *.txt
 *.fastq*
 *.ipynb_checkpoints*
+.vscode*
