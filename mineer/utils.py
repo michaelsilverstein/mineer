@@ -1,12 +1,12 @@
 """
 minEER utilites
 """
+from typing import List, Tuple
 from .mineer import minEER
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 import numpy as np
-import pandas as pd
-import os, functools
+import os, functools, random
 
 default_nreads = 10000
 default_mal = 100
@@ -37,7 +37,6 @@ class Record:
     @functools.cached_property
     def length(self):
         """Read length"""
-        self.length
         return len(self.record)
 
     @functools.cached_property
@@ -58,57 +57,91 @@ class Read:
         self.file = file
         self.mal = mal
         self.mae = mae
-        self.mineer = False
-        self.pass_qc = None
-        self.trimmed = None
-    
-    @functools.cached_property
-    def trimpos(self):
-        """Get trim positions using minEER"""
-        self.mineer = True
-        return minEER(self.untrimmed.ee, self.mal, self.mae)
-    
-    def trim(self, trimpos: tuple=None):
-        """Trim read using minEER"""
-        # Get trim positions using minEER if none provided
-        if trimpos is None:
-            trimpos = self.trimpos
-        trimstart, trimend = trimpos
 
-        # Check if QC is passed (if minEER was run)
-        if (trimstart is None) & (trimend is None):
-            self.pass_qc = False
-        else:
-            # Trim sequence
-            trimstart, trimend = map(int, (trimstart, trimend))
-            trimmed_seqrecord = self.untrimmed.record[trimstart: trimend + 1]
-            self.trimmed = Record(trimmed_seqrecord)
-            # Evaluate pass_qc if mineer was not run
-            if self.mineer:
-                self.pass_qc = True
-            else:
-                self.pass_qc = self.trimmed.ee.mean() <= self.mae
+        # minEER methods
+        self.mineer = False
+        self.pass_qc_mineer = None
+        self.trimpos_mineer = None
+
+        # Truncation methods
+        self.trimmed = None
+        self.pass_qc = None
+        self.bothpassing = None # Updated from ReadPair
+
+    def runMineer(self):
+        """Run minEER on Read"""
+        # Run minEER to get truncation positions
+        trimpos_mineer = minEER(self.untrimmed.ee, self.mal, self.mae)
+        self.trimpos_mineer = trimpos_mineer
+        self.mineer = True
+        self.pass_qc_mineer = bool(trimpos_mineer[0])
+
+    def truncate(self, trimpos):
+        """Truncate sequence given """
+        trimstart, trimend = trimpos
+        # Truncate
+        trimmed_seqrecord = self.untrimmed.record[trimstart: trimend]
+        self.trimmed = Record(trimmed_seqrecord)
+        # Passes QC?
+        self.pass_qc = self.trimmed.ee.mean() <= self.mae
+
 
 class ReadPair:
     """A forward/rev read pair"""
-    def __init__(self, fwd_read, rev_read):
+    def __init__(self, fwd_read: Read, rev_read:Read = None):
         self.fwd_read = fwd_read
         self.rev_read = rev_read
+        self.paired = bool(rev_read)
+
+    def truncBoth(self, fwd_pos: tuple, rev_pos: tuple=None):
+        """Truncate both read pairs"""
+        self.fwd_read.truncate(fwd_pos)
+        if self.paired:
+            self.rev_read.truncate(rev_pos)
     
-    @functools.cached_property
+    def checkQC(self):
+        """Check that both reads are passing qc"""
+        # Check that read has been truncated, don't evaluate qc if not
+        if not self.fwd_read.trimmed:
+            return
+        qcs = [self.fwd_read.pass_qc]
+        if self.paired:
+            if not self.rev_read.trimmed:
+                return
+            qcs.append(self.rev_read.pass_qc)
+        self.bothpassing = all(qcs)
+    
+    @property
     def bothpassing(self):
-        """Check that both reads are passing"""
-        return self.fwd_read.pass_qc & self.rev_read.pass_qc
+        """Check that both reads are passing qc"""
+        # Check that read has been truncated, don't evaluate qc if not
+        if not self.fwd_read.trimmed:
+            return
+        qcs = [self.fwd_read.pass_qc]
+        if self.paired:
+            if not self.rev_read.trimmed:
+                return
+            qcs.append(self.rev_read.pass_qc)
         
+        # Update method for each Read and for ReadPair
+        bp = all(qcs)
+        self.fwd_read.bothpassing = bp
+        if self.paired:
+            self.rev_read.bothpassing = bp
+        return bp
+
 class Sample:
-    """A (paired) sample"""
+    """Readpairs for all reads in both files of a sample (for paired reads). Assumes reads are in order for each pair"""
     def __init__(self, name: str, fwd_file: File, rev_file: File=None):
         self.name = name
         self.fwd_file = fwd_file
-        self.rev_file = rev_file
-        # Collect readpairs for 
-        self.readpairs = [ReadPair(f, r) for f, r in zip(self.fwd_file.reads, self.rev_file.reads)]
+        if rev_file:
+            self.rev_file = rev_file
+            self.readpairs = [ReadPair(f, r) for f, r in zip(self.fwd_file.reads, self.rev_file.reads)]
+        else:
+            self.readpairs = [ReadPair(f) for f in self.fwd_file.reads]
     
+
 def phred2ee(phred):
     """
     Convert a Phred score to an expected error probability
@@ -118,39 +151,147 @@ def phred2ee(phred):
     ee = np.power(10, -phred / 10)
     return ee
 
-# def sample2file(all_filepaths, suffix):
-#     """
-#     Get mapping of sample -> filepath given a suffix
-#     """
-#     # Get filepaths of `suffix`
-#     filepaths = [f for f in all_filepaths if f.endswith(suffix)]
-#     # Get all forward sample names
-#     samples = [os.path.basename(f).split(suffix)[0] for f in filepaths]
-#     # Combine
-#     return dict(zip(samples, filepaths))
+class Project:
+    """
+    Collects samples for project
+
+    Inputs:
+    | filepaths: Array of file path locations. Files without a file suffix will be ignored
+    | {fwd, rev}_format: Suffix of forward and reverse files
+        ex. For forward read A_1.fastq and reverse read A_2.fastq
+        fwd_format = '_1.fastq'
+        rev_format = '_2.fastq'
+        * If single ended, do not define rev_format
+    | nreads: Number of reads to sample for computing truncation positions (default: 10000)
+    | mal: Maximum acceptable length (default: 100)
+    | mae: Minimum acceptable error (default: 1e-3)
+    | aggmethod: Method to aggregate truncation positions across reads, either 'median' (default) or 'mean'
+    | outdir: Output directory
+
+    Pipeline structure
+    * Project: Collection of samples
+    * Sample: Collection of read pairs
+    * ReadPair: Collection of pair of reads
+    * Read: Untrimmed and trimmed record
+    * Record: A single SeqRecord with extracted data
+    """
+    def __init__(self, filepaths: list, fwd_format: str, rev_format: str=None, nreads: int=default_nreads, mal: int=default_mal, mae: float=default_mae, aggmethod: str='median', outdir: str=None):
+        self.filepaths = [os.path.abspath(f) for f in filepaths if any(map(lambda x: f.endswith(x), [fwd_format, rev_format]))]
+        self.fwd_format = fwd_format
+        self.rev_format = rev_format
+        self.nreads = nreads
+        self.paired = bool(rev_format)
+        self.mal = mal
+        self.mae = mae
+        assert aggmethod in ['mean', 'median'], '"aggmethod" must be either "median" (default) or "mean"'
+        self.aggfunc = np.median if aggmethod == 'median' else np.mean
+        if not outdir:
+            outdir = os.getcwd()
+        self.outdir = outdir
+
+        # All reads
+        self.fwd_reads = []
+        self.rev_reads = []
+        self.samples = None
+        # Subset for minEER
+        self.fwd_sub = None
+        self.rev_sub = None
+        self.all_sub = []
+        self.fwd_passing_sub = None
+        self.rev_passing_sub = None
+        # Global
+        self.fwd_pos = None
+        self.rev_pos = None
+        self.passing_readpairs = None
+
+    @functools.cached_property
+    def files(self) -> List[File]:
+        """All files in project"""
+        fs = []
+        for path in self.filepaths:
+            direction = 'f' if path.endswith(self.fwd_format) else 'r'
+            suffix = self.fwd_format if direction == 'f' else self.rev_format
+            file = File(path, direction, suffix, self.mal, self.mae)
+            fs.append(file)
+        return fs
+
+    def getReadsandSamples(self):
+        """Sort reads into forward and reverse reads and create samples"""
+        samples = {}
+        for file in self.files:
+            # Create sample pairs
+            sample = file.sample
+            direction = file.direction
+            if sample not in samples:
+                samples[sample] = {'f': None, 'r': None}
+            samples[sample][direction] = file
+
+            # Sort reads by direction
+            reads = file.reads
+            if direction == 'f':
+                attr = 'fwd_reads'
+            else:
+                attr = 'rev_reads'
+            for read in reads:
+                # Save read to direction
+                getattr(self, attr).append(read)
+
+        # Create sample objects
+        Samples = [Sample(sample, files['f'], files['r']) for sample, files in samples.items()]
+        self.samples = Samples
+
+    def sampleReads(self):
+        """Subsample `nreads` from (each) direction"""
+        self.fwd_sub = random.sample(self.fwd_reads, self.nreads)
+        self.all_sub.extend(self.fwd_sub)
+        if self.paired:
+            self.rev_sub = random.sample(self.rev_reads, self.nreads)
+            self.all_sub.extend(self.rev_sub)
     
+    def mineerReads(self, reads: List[Read]):
+        """Run minEER on reads"""
+        for r in reads:
+            r.runMineer()
+    
+    def calcPos(self):
+        """Calculate global truncation positions from subset"""
+        # Get forward trim positions
+        fwd_positions = [r.trimpos_mineer for r in self.fwd_sub if r.pass_qc_mineer]
+        self.fwd_passing_sub = len(fwd_positions)/self.nreads
+        self.fwd_pos = self.aggfunc(fwd_positions, 0).astype(int)
+        if self.paired:
+            rev_positions = [r.trimpos_mineer for r in self.rev_sub if r.pass_qc_mineer]
+            self.rev_passing_sub = len(rev_positions)/self.nreads
+            self.rev_pos = self.aggfunc(rev_positions, 0).astype(int)
 
-# def pairSamples(files: l, fwd_format: str, rev_format: str=None) -> pd.DataFrame:
-#     """
-#     Given a list of filepaths and suffixes, create filepath pairs
-#     Leave `rev_format` undefined for single end
+    def truncAndFilter(self):
+        """Truncate all reads to global positions and indicate passing ReadPairs"""
+        assert not self.fwd_pos is None, 'Run `calcPos()` for global truncation parameters (or set `fwd_pos` and `rev_pos` manually)'
 
-#     Output: | [Sample] | forward | reverse |
-#     """
-#     # Get mapping of samples to forward reads
-#     fwd_files = [f for f in files if f.]
-#     fwd_samples = {os.path.basename(f.filepath).split(fwd_format)[0]: f for f in fwd_files}
-#     fwd_df = pd.Series(fwd_samples, name='forward').rename_axis('Sample')
-#     fwd_samples = {}
-#     for f in files:
-#         if f.filepath
-#     # If paired, get reverse
-#     if rev_format:
-#         rev_samples = samples2paths(filepaths, rev_format)
-#         rev_df = pd.Series(rev_samples, name='reverse').rename_axis('Sample')
-#         # Combine
-#         file_df = pd.concat((fwd_df, rev_df), 1)
-#     else:
-#         # Otherwise just have forward
-#         file_df = fwd_df.reset_index()
-#     return file_df
+        passing_rps = []
+        for sample in self.samples:
+            readpairs = sample.readpairs
+            for rp in readpairs:
+                rp.truncBoth(self.fwd_pos, self.rev_pos)
+                # Save read pairs that both pass QC
+                if rp.bothpassing:
+                    passing_rps.append(rp)
+        
+        self.passing_readpairs = passing_rps
+
+    def writeFile(self, file: File):
+        """Write one file with truncated sequences. Use File to preserve original order"""
+        # Generate output path
+        outpath = os.path.join(self.outdir, f'{file.sample}_mineer{file.suffix}')
+        # Create output directory if it doesn't exist
+        if not os.path.isdir(self.outdir):
+            os.makedirs(self.outdir)
+        # Gather truncated reads where pairs pass qc
+        truncated = [r.trimmed.record for r in file.reads if r.bothpassing]
+        # Save
+        SeqIO.write(truncated, outpath, 'fastq')
+            
+    def writeFiles(self):
+        """Write all truncated files"""
+        for f in self.files:
+            self.writeFile(f)
