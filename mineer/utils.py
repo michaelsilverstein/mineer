@@ -180,6 +180,7 @@ class Project:
     def __init__(self, filepaths: List[str], fwd_format: str, rev_format: str=None, nreads: int=default_nreads, mal: int=default_mal, mae: float=default_mae, aggmethod: str='median', outdir: str=None):
         #TODO: MAKE SURE ABSPATH WORKS
         self.paired = bool(rev_format)
+        assert fwd_format != rev_format, 'If "rev_format" is provided, it must differ from "fwd_format".\nOnly provide "fwd_format" for single end mode.'
         self.fwd_format = fwd_format
         self.rev_format = rev_format
         suffixes = tuple([fmt for fmt in [fwd_format, rev_format] if fmt])

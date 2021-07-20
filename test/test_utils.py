@@ -44,17 +44,16 @@ class TestProjectSingle(TestCase):
         mae = 1,
         aggmethod = 'mean',
         outdir = 'test'
-    )
+        )
+        self.project = Project(**self.kwargs)
 
     def test_project_ingest(self):
-        project = Project(**self.kwargs)
         for arg, val in self.kwargs.items():
-            project_val = getattr(project, arg)
+            project_val = getattr(self.project, arg)
             self.assertEqual(val, project_val)
     
     def test_not_paired(self):
-        project = Project(**self.kwargs)
-        self.assertFalse(project.paired)
+        self.assertFalse(self.project.paired)
 
     def test_only_forward(self):
         bad_paths = ['a_2.fastq', 'b_2.fastq']
