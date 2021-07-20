@@ -28,12 +28,12 @@ Run `mineer -h` to view the following documentation:
                             
     -r R              Reverse read filename suffix (leave blank for single end)
     --mal MAL         Minimum acceptable length. Default: 100
-    --mae MAE         Minimum acceptable error. Deafult: 0.010000
+    --mae MAE         Maximum acceptable error. Deafult: 0.010000
     -m {mean,median}  Aggregation method for computing truncation. Default: "median"
     -n N              Number of reads to subsample per direction for computing truncation position. Default: 10000
     -o O              Output directory. Default: current working directory
     -v V              Provide output directory to generate and visualizations
-    
+
 # Tutorial
 1. Download some fastq files
 

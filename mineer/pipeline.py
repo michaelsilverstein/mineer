@@ -94,7 +94,7 @@ def mineer_cli(args=None):
     """, required=True)
     parser.add_argument('-r', help='Reverse read filename suffix (leave blank for single end)')
     parser.add_argument('--mal', help='Minimum acceptable length. Default: %d' % default_mal, type=int, default=default_mal)
-    parser.add_argument('--mae', help='Minimum acceptable error. Deafult: %f' % default_mae, type=float, default=default_mae)
+    parser.add_argument('--mae', help='Maximum acceptable error. Deafult: %f' % default_mae, type=float, default=default_mae)
     parser.add_argument('-m', help='Aggregation method for computing truncation. Default: "median"', choices=['mean', 'median'], default='median')
     parser.add_argument('-n', help='Number of reads to subsample per direction for computing truncation position. Default: %d' % default_nreads, type=int, default=default_nreads)
     parser.add_argument('-o', help='Output directory. Default: current working directory', default=os.getcwd())

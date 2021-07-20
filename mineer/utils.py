@@ -166,7 +166,7 @@ class Project:
         * If single ended, do not define rev_format
     | nreads: Number of reads to sample for computing truncation positions (default: 10000)
     | mal: Maximum acceptable length (default: 100)
-    | mae: Minimum acceptable error (default: 1e-3)
+    | mae: Maximum acceptable error (default: 1e-2)
     | aggmethod: Method to aggregate truncation positions across reads, either 'median' (default) or 'mean'
     | outdir: Output directory
 
