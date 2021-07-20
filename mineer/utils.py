@@ -1,7 +1,7 @@
 """
 minEER utilites
 """
-from typing import List, Tuple
+from typing import List
 from .mineer import minEER
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
@@ -176,16 +176,18 @@ class Project:
     * Read: Untrimmed and trimmed record
     * Record: A single SeqRecord with extracted data
     """
-    def __init__(self, filepaths: list, fwd_format: str, rev_format: str=None, nreads: int=default_nreads, mal: int=default_mal, mae: float=default_mae, aggmethod: str='median', outdir: str=None):
+    def __init__(self, filepaths: List[str], fwd_format: str, rev_format: str=None, nreads: int=default_nreads, mal: int=default_mal, mae: float=default_mae, aggmethod: str='median', outdir: str=None):
         #TODO: MAKE SURE ABSPATH WORKS
-        self.filepaths = [os.path.abspath(f) for f in filepaths if any(map(lambda x: f.endswith(x), [fwd_format, rev_format]))]
+        self.paired = bool(rev_format)
         self.fwd_format = fwd_format
         self.rev_format = rev_format
+        suffixes = tuple([fmt for fmt in [fwd_format, rev_format] if fmt])
+        self.filepaths = [f for f in filepaths if f.endswith(suffixes)]
         self.nreads = nreads
-        self.paired = bool(rev_format)
         self.mal = mal
         self.mae = mae
         assert aggmethod in ['mean', 'median'], '"aggmethod" must be either "median" (default) or "mean"'
+        self.aggmethod = aggmethod
         self.aggfunc = np.median if aggmethod == 'median' else np.mean
         if not outdir:
             outdir = os.getcwd()
