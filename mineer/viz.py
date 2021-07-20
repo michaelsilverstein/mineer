@@ -86,7 +86,7 @@ class Viz:
         # Add lines for global truncation positions
         for ax, trimpos in zip(g.axes.ravel(), [self.project.fwd_pos, self.project.rev_pos]):
             for p in trimpos:
-                ax.axvline(p, color='red', lw=4)
+                ax.axvline(p, color='gold', lw=4)
 
         g.set_xlabels('Position')
         return g

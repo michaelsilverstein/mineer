@@ -9,7 +9,7 @@ After cloning run `pip install .`.
 
 Run `mineer -h` to view the following documentation:
 
-    usage: mineer [-h] -i I -f F [-r R] [--mal MAL] [--mae MAE] [-m {mean,median}] [-n N] [-o O]
+    usage: mineer [-h] -i I -f F [-r R] [--mal MAL] [--mae MAE] [-m {mean,median}] [-n N] [-o O] [-v V]
 
     minEER pipeline
 
@@ -32,8 +32,8 @@ Run `mineer -h` to view the following documentation:
     -m {mean,median}  Aggregation method for computing truncation. Default: "median"
     -n N              Number of reads to subsample per direction for computing truncation position. Default: 10000
     -o O              Output directory. Default: current working directory
-
-
+    -v V              Provide output directory to generate and visualizations
+    
 # Tutorial
 1. Download some fastq files
 
