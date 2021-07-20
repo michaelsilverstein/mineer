@@ -1,6 +1,6 @@
 *.txt
 *.fastq*
-*.ipynb_checkpoints*
+*.ipynb
 .vscode*
 *egg-info*
 *.pyc
