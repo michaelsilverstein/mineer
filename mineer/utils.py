@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import os, functools, random
 
-default_nreads = 5000
+default_nreads = 10000
 default_mal = 100
 default_mae = 1e-2
 
@@ -269,9 +269,9 @@ class Project:
         # Sample-pairs
         sample_map_data = []
         for s, file_dict in self._sample_mapping.items():
-            s_data = {'Sample': s, 'Forward': file_dict['f'].filepath}
+            s_data = {'Sample': s, 'Forward': os.path.basename(file_dict['f'].filepath)}
             if self.paired:
-                s_data.update({'Reverse': file_dict['r'].filepath})
+                s_data.update({'Reverse': os.path.basename(file_dict['r'].filepath)})
             sample_map_data.append(s_data)
         sample_map_df = pd.DataFrame(sample_map_data).set_index('Sample')
 
