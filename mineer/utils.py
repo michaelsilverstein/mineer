@@ -6,6 +6,7 @@ from .mineer import minEER
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 import numpy as np
+import pandas as pd
 import os, functools, random
 
 default_nreads = 5000
@@ -197,6 +198,7 @@ class Project:
         self.fwd_reads = []
         self.rev_reads = []
         self.samples = None
+        self._sample_mapping = None
         # Subset for minEER
         self.fwd_sub = None
         self.fwd_n_tries = None
@@ -247,6 +249,33 @@ class Project:
         # Create sample objects
         Samples = [Sample(sample, files['f'], files['r']) for sample, files in samples.items()]
         self.samples = Samples
+        self._sample_mapping = samples
+
+    @property
+    def _reportInputs(self):
+        """Report number of samples and reads"""
+        if not self.samples:
+            self.getReadsandSamples()
+        # Basic inputs
+        args = ['fwd_format', 'rev_format', 'nreads', 'mal', 'mae', 'aggmethod', 'outdir']
+        nfiles = len(self.files)
+        nsamples = len(self.samples)
+        pairs = {arg: getattr(self, arg) for arg in args}
+        pairs.update({'Files': nfiles, 'Samples': nsamples})
+
+        order = args + ['Files', 'Samples']
+        input_report = alignedSpacing(pairs, order=order)
+
+        # Sample-pairs
+        sample_map_data = []
+        for s, file_dict in self._sample_mapping.items():
+            s_data = {'Sample': s, 'Forward': file_dict['f'].filepath}
+            if self.paired:
+                s_data.update({'Reverse': file_dict['r'].filepath})
+            sample_map_data.append(s_data)
+        sample_map_df = pd.DataFrame(sample_map_data).set_index('Sample')
+
+        return input_report, sample_map_df
 
     def subsampleReads(self, reads: List[Read]):
         """Subsample `nreads` and keep those that pass minEER"""
@@ -279,11 +308,22 @@ class Project:
             self.rev_frac_passing = len(self.fwd_sub) / self.rev_n_tries
             self.all_sub.extend(self.rev_sub)
     
-    def _reportPassingSubset(self):
-        report = f'From subset:\n\tForward reads passing: {len(self.fwd_sub)} /{self.fwd_n_tries} ({self.fwd_frac_passing * 100:.2f})%\n'
+    @property
+    def _reportMineerStats(self):
+        """Report fraction of passing reads from minEER run"""
+        passing_stats = f'From subset run on minEER:\n\tForward reads passing: {len(self.fwd_sub)}/{self.fwd_n_tries} ({self.fwd_frac_passing * 100:.2f})%\n'
         if self.paired:
-            report += f'\tReverse reads passing: {len(self.rev_sub)} /{self.rev_n_tries} ({self.rev_frac_passing * 100:.2f})%\n'
-        print(report)
+            passing_stats += f'\tReverse reads passing: {len(self.rev_sub)}/{self.rev_n_tries} ({self.rev_frac_passing * 100:.2f})%\n'
+
+        """Report stats on trimpositions from minEER run"""
+        fwd_poses = [{'trimstart': r.trimpos_mineer[0], 'trimend': r.trimpos_mineer[1], 'direction': 'f'} for r in self.fwd_sub if r.pass_qc_mineer]
+        data = fwd_poses
+        if self.paired:
+            rev_poses = [{'trimstart': r.trimpos_mineer[0], 'trimend': r.trimpos_mineer[1], 'direction': 'r'} for r in self.rev_sub if r.pass_qc_mineer]
+            data.extend(rev_poses)
+        trimpos_df = pd.DataFrame(data)
+        trimpos_stats = trimpos_df.groupby('direction').agg(['min', 'max', 'mean', 'median'])
+        return passing_stats, trimpos_stats
 
     def calcPos(self):
         """Calculate global truncation positions from subset"""
@@ -297,6 +337,16 @@ class Project:
             self.rev_passing_sub = len(rev_positions)/self.nreads
             self.rev_pos = self.aggfunc(rev_positions, 0).astype(int)
             self.rev_len = self.rev_pos[1] - self.rev_pos[0]
+
+    @property
+    def _reportGlobalPos(self):
+        """Report global truncation positions"""
+        text = f"""Using {self.aggmethod} and {self.nreads} reads, truncation positions are:
+        Forward: {self.fwd_pos}
+        """
+        if self.paired:
+            text += f'Reverse: {self.rev_pos}'
+        return text
 
     def truncAndFilter(self):
         """Truncate all reads to global positions and indicate passing ReadPairs"""
@@ -312,6 +362,23 @@ class Project:
                     passing_rps.append(rp)
         
         self.passing_readpairs = passing_rps
+
+    @property
+    def _reportTruncStats(self):
+        """Report passing reads after using global truncation positions"""
+        report_dict = {
+            'Forward reads:': f'{len([r for r in self.fwd_reads if r.pass_qc])}/{len(self.fwd_reads)}',
+            'Reverse reads:': f'{len([r for r in self.rev_reads if r.pass_qc])}/{len(self.rev_reads)}',
+            'Read pairs:': f'{len(self.passing_readpairs)}/{len([rp for s in self.samples for rp in s.readpairs])}'
+        }
+        if self.paired:
+            order = ['Forward reads:', 'Reverse reads:', 'Read pairs:']
+        else:
+            order = ['Forward reads:', 'Read pairs:']
+
+        report = 'Reads that pass quality control after truncation:\n'
+        report += alignedSpacing(report_dict, order=order)
+        return report
 
     def writeFile(self, file: File):
         """Write one file with truncated sequences. Use File to preserve original order"""
@@ -329,3 +396,15 @@ class Project:
         """Write all truncated files"""
         for f in self.files:
             self.writeFile(f)
+
+def alignedSpacing(pairs, width = 30, order=None):
+    """Generate text with aligned spacing for each element of `pairs` of `width`"""
+    text = ''
+    if not order:
+        order = pairs.keys()
+    for k in order:
+        v = str(pairs[k])
+        spaces = ' ' * (width - len(k) - len(v))
+        line = f'{k}:{spaces}{v}\n'
+        text += line
+    return text

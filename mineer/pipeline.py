@@ -8,6 +8,7 @@ EMAIL: michael.silverstein4@gmail.com
 import random, os
 from .utils import Project, default_nreads, default_mal, default_mae
 from argparse import ArgumentParser, RawTextHelpFormatter
+import pandas as pd
 
 
 def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=default_mal, mae=default_mae, aggmethod: str='median', nreads=default_nreads, outdir=None, random_seed=None):
@@ -21,25 +22,52 @@ def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=defau
     4) Truncate all reads to global positions and filter out read pairs that don't pass QC
     5) Save truncated sequences
     """
+    print('STARTING MINEER RUN')
     if random_seed:
         random.seed(random_seed)
     # Create project
-    print('Creating project...')
     project = Project(filepaths, fwd_format, rev_format, nreads, mal, mae, aggmethod, outdir)
     # 1) Ingest reads
-    print('Ingesting reads...')
     project.getReadsandSamples()
+    # Print inputs
+    print('\t\t**** INPUTS ****')
+    input_report, sample_map_df = project._reportInputs
+    print(input_report)
+    print('SAMPLE-FILE PAIRS')
+    with pd.option_context('display.max_rows', None):
+        print(sample_map_df)
+    print()
+
     # 2) Subsample
+    print('\t\t**** RUNNING MINEER ALGORITHM ****')
     print('Running minEER on a subset of %d reads per direction...' % nreads)
     project.subsampleAll()
+    print('Complete.')
+    print()
+    # Print truncstats
+    print('**** minEER truncation stats from subset ****')
+    passing_stats, mineer_stats = project._reportMineerStats
+    print(passing_stats)
+    print(mineer_stats.T)
+    print()
+
     # 3) Determine global truncation positions
-    print('Calculating global truncation positions...')
     project.calcPos()
+    print('\t\t**** GLOBAL TRUNCATION POSITIONS ****')
+    globpos_report = project._reportGlobalPos
+    print(globpos_report)
+    print()
+
     # 4) Truncate all reads to global positions and filter out read pairs that don't pass QC
-    print('Truncating files to global positions...')
+    print('**** TRUNCATING ALL FILES TO GLOBAL POSITIONS ****')
     project.truncAndFilter()
+    truncstats = project._reportTruncStats
+    print(truncstats)
+    print()
+
     # 5) Save truncated sequences
-    print('Saving truncated files...')
+    print('\t\t**** SAVING TRUNCATED FILES ****')
+    print(f'Saving files to "{project.outdir}" with format <sample>_mineer<suffix>')
     project.writeFiles()
     return project
 
