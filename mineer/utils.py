@@ -367,14 +367,14 @@ class Project:
     def _reportTruncStats(self):
         """Report passing reads after using global truncation positions"""
         report_dict = {
-            'Forward reads:': f'{len([r for r in self.fwd_reads if r.pass_qc])}/{len(self.fwd_reads)}',
-            'Reverse reads:': f'{len([r for r in self.rev_reads if r.pass_qc])}/{len(self.rev_reads)}',
-            'Read pairs:': f'{len(self.passing_readpairs)}/{len([rp for s in self.samples for rp in s.readpairs])}'
+            'Forward reads': f'{len([r for r in self.fwd_reads if r.pass_qc])}/{len(self.fwd_reads)}',
+            'Reverse reads': f'{len([r for r in self.rev_reads if r.pass_qc])}/{len(self.rev_reads)}',
+            'Read pairs': f'{len(self.passing_readpairs)}/{len([rp for s in self.samples for rp in s.readpairs])}'
         }
         if self.paired:
-            order = ['Forward reads:', 'Reverse reads:', 'Read pairs:']
+            order = ['Forward reads', 'Reverse reads', 'Read pairs']
         else:
-            order = ['Forward reads:', 'Read pairs:']
+            order = ['Forward reads', 'Read pairs']
 
         report = 'Reads that pass quality control after truncation:\n'
         report += alignedSpacing(report_dict, order=order)
