@@ -7,11 +7,12 @@ EMAIL: michael.silverstein4@gmail.com
 """
 import random, os
 from .utils import Project, default_nreads, default_mal, default_mae
+from .viz import Viz
 from argparse import ArgumentParser, RawTextHelpFormatter
 import pandas as pd
 
 
-def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=default_mal, mae=default_mae, aggmethod: str='median', nreads=default_nreads, outdir=None, random_seed=None):
+def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=default_mal, mae=default_mae, aggmethod: str='median', nreads=default_nreads, outdir=None, viz_outdir=None, random_seed=None):
     """
     Leave `rev_format` blank for single read mode
 
@@ -21,8 +22,9 @@ def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=defau
     3) Determine global truncation positions
     4) Truncate all reads to global positions and filter out read pairs that don't pass QC
     5) Save truncated sequences
+    6) Produce viz if directory provided
     """
-    print('STARTING MINEER RUN')
+    print('******** STARTING MINEER PIPELINE ********')
     if random_seed:
         random.seed(random_seed)
     # Create project
@@ -45,7 +47,7 @@ def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=defau
     print('Complete.')
     print()
     # Print truncstats
-    print('**** minEER truncation stats from subset ****')
+    print('\t\t**** minEER truncation stats from subset ****')
     passing_stats, mineer_stats = project._reportMineerStats
     print(passing_stats)
     print(mineer_stats.T)
@@ -59,7 +61,7 @@ def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=defau
     print()
 
     # 4) Truncate all reads to global positions and filter out read pairs that don't pass QC
-    print('**** TRUNCATING ALL FILES TO GLOBAL POSITIONS ****')
+    print('\t\t**** TRUNCATING ALL FILES TO GLOBAL POSITIONS ****')
     project.truncAndFilter()
     truncstats = project._reportTruncStats
     print(truncstats)
@@ -69,6 +71,15 @@ def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=defau
     print('\t\t**** SAVING TRUNCATED FILES ****')
     print(f'Saving files to "{project.outdir}" with format <sample>_mineer<suffix>')
     project.writeFiles()
+
+    # 6) Produce viz if directory provided
+    if viz_outdir:
+        print('\t\t**** GENERATING FIGURES ****')
+        v = Viz(project, viz_outdir)
+        v.genFigs()
+        print(f'Figures have been saved to "{viz_outdir}"')
+    print('******** MINEER RUN COMPLETE ********')
+
     return project
 
 def mineer_cli(args=None):
@@ -87,6 +98,7 @@ def mineer_cli(args=None):
     parser.add_argument('-m', help='Aggregation method for computing truncation. Default: "median"', choices=['mean', 'median'], default='median')
     parser.add_argument('-n', help='Number of reads to subsample per direction for computing truncation position. Default: %d' % default_nreads, type=int, default=default_nreads)
     parser.add_argument('-o', help='Output directory. Default: current working directory', default=os.getcwd())
+    parser.add_argument('-v', help='Provide output directory to generate and visualizations')
 
     args = parser.parse_args(args)
     
@@ -94,4 +106,4 @@ def mineer_cli(args=None):
     filepaths = [os.path.abspath(os.path.join(args.i, f)) for f in os.listdir(args.i)]
 
     # Run pipeline
-    pipeline = truncPipeline(filepaths, args.f, args.r, args.mal, args.mae, args.m, args.n, args.o)
+    project = truncPipeline(filepaths, args.f, args.r, args.mal, args.mae, args.m, args.n, args.o, args.v)
