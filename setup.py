@@ -5,7 +5,7 @@ setuptools.setup(
     name='mineer',
     version=__version__,
     entry_points={'console_scripts':['mineer=mineer.pipeline:mineer_cli']},
-    install_requires= ['numpy', 'pandas', 'biopython'],
+    install_requires= ['numpy', 'pandas', 'biopython', 'seaborn'],
     url='',
     license='MIT',
     author='michaelsilverstein',
