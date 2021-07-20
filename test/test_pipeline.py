@@ -1,11 +1,12 @@
 """Test pipeline"""
 
+from mineer.utils import Project
 from Bio import SeqIO
 from unittest import TestCase
 from mineer.pipeline import truncPipeline, mineer_cli
 import os, subprocess, shutil
 
-class TestPipeline(TestCase):
+class TestPipelinePaired(TestCase):
     """Test whole pipeline on two samples"""
     @classmethod
     def setUpClass(self):
@@ -19,11 +20,11 @@ class TestPipeline(TestCase):
         self.fwd_format = '_1.fastq'
         self.rev_format = '_2.fastq'
 
-        self.project = truncPipeline(self.filepaths, self.fwd_format, self.rev_format, outdir=self.outdir1, random_seed=123)
+        self.project = truncPipeline(self.filepaths, self.fwd_format, self.rev_format, nreads=5000, outdir=self.outdir1, random_seed=123)
     
     @classmethod
     def tearDownClass(self):
-        shutil.rmtree(self.tempdir)
+        shutil.rmtree(self.outdir1)
         shutil.rmtree(self.outdir2)
     
     def test_n_tries(self):
@@ -58,5 +59,20 @@ class TestPipeline(TestCase):
         outfiles = sorted(os.listdir(self.outdir2))
         self.assertEqual(outfiles, ['SRR9660307_mineer_1.fastq', 'SRR9660307_mineer_2.fastq', 'SRR9660321_mineer_1.fastq', 'SRR9660321_mineer_2.fastq'])
 
-    def test_project_and_cli(self):
-        pass
+class TestPipelineSingle(TestCase):
+    """Uses files downloaded from Paired"""
+    @classmethod
+    def setUpClass(self):
+        self.tempdir = self.tempdir = 'test/test_files/fastqs'
+        self.filepaths = [f'{os.path.join(self.tempdir, f)}' for f in os.listdir(self.tempdir)]
+        self.project = Project(self.filepaths, '_1.fastq')
+
+
+    @classmethod
+    def tearDownClass(self):
+        shutil.rmtree(self.tempdir)
+
+    def test_forward_args_only(self):
+        """All reverse arguments should be empty"""
+        rev_arg_vals = [v for k, v in self.project.__dict__.items() if 'rev' in k]
+        self.assertFalse(any(rev_arg_vals))
