@@ -257,14 +257,14 @@ class Project:
         if not self.samples:
             self.getReadsandSamples()
         # Basic inputs
-        args = ['fwd_format', 'rev_format', 'nreads', 'mal', 'mae', 'aggmethod', 'outdir']
+        args = ['paired', 'fwd_format', 'rev_format', 'nreads', 'mal', 'mae', 'aggmethod', 'outdir']
         nfiles = len(self.files)
         nsamples = len(self.samples)
         pairs = {arg: getattr(self, arg) for arg in args}
         pairs.update({'Files': nfiles, 'Samples': nsamples})
 
         order = args + ['Files', 'Samples']
-        input_report = alignedSpacing(pairs, order=order)
+        input_report = alignedSpacing(pairs, 50, order)
 
         # Sample-pairs
         sample_map_data = []
