@@ -12,9 +12,11 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 import pandas as pd
 
 
-def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=default_mal, mae=default_mae, aggmethod: str='median', nreads=default_nreads, outdir=None, viz_outdir=None, random_seed=None):
+def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=default_mal, mae=default_mae, aggmethod: str='median', nreads=default_nreads, filter='both', outdir=None, viz_outdir=None, random_seed=None):
     """
     Leave `rev_format` blank for single read mode
+
+    See mineer.utils.Project for documentation on each argument
 
     Run minEER truncation pipeline
     1) Ingest files
@@ -25,10 +27,8 @@ def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=defau
     6) Produce viz if directory provided
     """
     print('******** STARTING MINEER PIPELINE ********')
-    if random_seed:
-        random.seed(random_seed)
     # Create project
-    project = Project(filepaths, fwd_format, rev_format, nreads, mal, mae, aggmethod, outdir)
+    project = Project(filepaths, fwd_format, rev_format, nreads, mal, mae, aggmethod, filter, outdir)
     # 1) Ingest reads
     project.getReadsandSamples()
     # Print inputs
@@ -43,6 +43,8 @@ def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=defau
     # 2) Subsample
     print('\t\t**** RUNNING MINEER ALGORITHM ****')
     print('Running minEER on a subset of %d reads per direction...' % nreads)
+    if random_seed:
+        random.seed(random_seed)
     project.subsampleAll()
     print('Complete.')
     print()
@@ -97,6 +99,11 @@ def mineer_cli(args=None):
     parser.add_argument('--mae', help='Maximum acceptable error. Deafult: %f' % default_mae, type=float, default=default_mae)
     parser.add_argument('-m', help='Aggregation method for computing truncation. Default: "median"', choices=['mean', 'median'], default='median', dest='aggmethod')
     parser.add_argument('-n', help='Number of reads to subsample per direction for computing truncation position. Default: %d' % default_nreads, type=int, default=default_nreads, dest='nreads')
+    parser.add_argument('--filter', help="""How to filter out truncated reads
+        --filter any: Filter out read pairs where any read has EER > mae
+        --filter both [Default]: Only filter read pairs where both reads have EER > mae
+        --filter no: Do not filter read pairs based on EER
+        * In all cases, reads that fall within truncation positions will be filtered""", choices=['any', 'both', 'no'], default='both')
     parser.add_argument('-o', help='Output directory. Default: current working directory', default=os.getcwd(), dest='outdir')
     parser.add_argument('-v', help='Provide output directory to generate and visualizations', dest='viz_outdir')
 

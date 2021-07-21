@@ -136,14 +136,14 @@ class ReadPair:
 
 class Sample:
     """Readpairs for all reads in both files of a sample (for paired reads). Assumes reads are in order for each pair"""
-    def __init__(self, name: str, fwd_file: File, rev_file: File=None):
+    def __init__(self, name: str, fwd_file: File, rev_file: File=None, filter: str='both'):
         self.name = name
         self.fwd_file = fwd_file
         if rev_file:
             self.rev_file = rev_file
-            self.readpairs = [ReadPair(f, r) for f, r in zip(self.fwd_file.reads, self.rev_file.reads)]
+            self.readpairs = [ReadPair(f, r, filter) for f, r in zip(self.fwd_file.reads, self.rev_file.reads)]
         else:
-            self.readpairs = [ReadPair(f) for f in self.fwd_file.reads]
+            self.readpairs = [ReadPair(f, filter=filter) for f in self.fwd_file.reads]
     
 
 def phred2ee(phred):
@@ -199,6 +199,7 @@ class Project:
         self.aggmethod = aggmethod
         self.aggfunc = np.median if aggmethod == 'median' else np.mean
         assert filter in ['any', 'both', 'no'], '"filter" must be either "any", "both", or "no"'
+        self.filter = filter
         if not outdir:
             outdir = os.getcwd()
         self.outdir = outdir
@@ -266,7 +267,7 @@ class Project:
         if not self.samples:
             self.getReadsandSamples()
         # Basic inputs
-        args = ['paired', 'fwd_format', 'rev_format', 'nreads', 'mal', 'mae', 'aggmethod', 'outdir']
+        args = ['paired', 'fwd_format', 'rev_format', 'nreads', 'mal', 'mae', 'aggmethod', 'filter', 'outdir']
         nfiles = len(self.files)
         nsamples = len(self.samples)
         pairs = {arg: getattr(self, arg) for arg in args}
