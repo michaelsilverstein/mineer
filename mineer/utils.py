@@ -101,18 +101,6 @@ class ReadPair:
         if self.paired:
             self.rev_read.truncate(rev_pos)
     
-    def checkQC(self):
-        """Check that both reads are passing qc"""
-        # Check that read has been truncated, don't evaluate qc if not
-        if not self.fwd_read.trimmed:
-            return
-        qcs = [self.fwd_read.pass_qc]
-        if self.paired:
-            if not self.rev_read.trimmed:
-                return
-            qcs.append(self.rev_read.pass_qc)
-        self.bothpassing = all(qcs)
-    
     @property
     def bothpassing(self):
         """Check that both reads are passing qc"""
@@ -168,6 +156,11 @@ class Project:
     | mal: Maximum acceptable length (default: 100)
     | mae: Maximum acceptable error (default: 1e-2)
     | aggmethod: Method to aggregate truncation positions across reads, either 'median' (default) or 'mean'
+    | filter: 
+        filter='any':  Filter out all readpairs where any read where EER > mae
+        filter='both': Only filter out readpairs where both reads EER > mae [Default]
+        filter='no':   Do not filter out any reads based on EER
+        * All reads with length < truncation length are always filtered (len(all reads) == truncation length)
     | outdir: Output directory
 
     Pipeline structure
@@ -177,7 +170,7 @@ class Project:
     * Read: Untrimmed and trimmed record
     * Record: A single SeqRecord with extracted data
     """
-    def __init__(self, filepaths: List[str], fwd_format: str, rev_format: str=None, nreads: int=default_nreads, mal: int=default_mal, mae: float=default_mae, aggmethod: str='median', outdir: str=None):
+    def __init__(self, filepaths: List[str], fwd_format: str, rev_format: str=None, nreads: int=default_nreads, mal: int=default_mal, mae: float=default_mae, aggmethod: str='median', filter: bool=False, outdir: str=None):
         #TODO: MAKE SURE ABSPATH WORKS
         self.paired = bool(rev_format)
         assert fwd_format != rev_format, 'If "rev_format" is provided, it must differ from "fwd_format".\nOnly provide "fwd_format" for single end mode.'
@@ -191,6 +184,7 @@ class Project:
         assert aggmethod in ['mean', 'median'], '"aggmethod" must be either "median" (default) or "mean"'
         self.aggmethod = aggmethod
         self.aggfunc = np.median if aggmethod == 'median' else np.mean
+        assert filter in ['any', 'both', 'no'], '"filter" must be either "any", "both", or "no"'
         if not outdir:
             outdir = os.getcwd()
         self.outdir = outdir
