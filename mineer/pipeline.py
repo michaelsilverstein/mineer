@@ -103,7 +103,7 @@ def mineer_cli(args=None):
     args = parser.parse_args(args)
     
     # Get filepaths
-    filepaths = [os.path.abspath(os.path.join(args.i, f)) for f in os.listdir(args.i)]
+    filepaths = [os.path.abspath(os.path.join(args.filepaths, f)) for f in os.listdir(args.filepaths)]
 
     # Extract inputs
     inputs = args.__dict__
