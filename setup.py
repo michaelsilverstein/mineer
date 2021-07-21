@@ -4,7 +4,10 @@ from mineer import __version__
 setuptools.setup(
     name='mineer',
     version=__version__,
-    entry_points={'console_scripts':['mineer=mineer.pipeline:mineer_cli']},
+    entry_points={'console_scripts':[
+        'mineer=mineer.pipeline:mineer_cli',
+        'mineer-test-files=mineer.download_test_files:download'
+    ]},
     install_requires= ['numpy', 'pandas', 'biopython', 'seaborn'],
     url='',
     license='MIT',
