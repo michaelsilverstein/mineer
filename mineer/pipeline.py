@@ -85,25 +85,29 @@ def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=defau
 def mineer_cli(args=None):
     """Command line interface for running minEER"""
     parser = ArgumentParser(formatter_class=RawTextHelpFormatter, description=__doc__)
-    parser.add_argument('-i', help='Path to directory containing all (unzipped!) fastq files for a single project', required=True)
+    parser.add_argument('-i', help='Path to directory containing all (unzipped!) fastq files for a single project', required=True, dest='filepaths')
     parser.add_argument('-f', help="""Forward read filename suffix for paired fastqs or single read filename suffix
         Ex. sample1_1.fastq
             -f _1.fastq
         If extension contains a '-', like sample1-r1.fastq:
             -f="-r1.fastq"
-    """, required=True)
-    parser.add_argument('-r', help='Reverse read filename suffix (leave blank for single end)')
+    """, required=True, dest='fwd_format')
+    parser.add_argument('-r', help='Reverse read filename suffix (leave blank for single end)', dest='rev_format')
     parser.add_argument('--mal', help='Minimum acceptable length. Default: %d' % default_mal, type=int, default=default_mal)
     parser.add_argument('--mae', help='Maximum acceptable error. Deafult: %f' % default_mae, type=float, default=default_mae)
-    parser.add_argument('-m', help='Aggregation method for computing truncation. Default: "median"', choices=['mean', 'median'], default='median')
-    parser.add_argument('-n', help='Number of reads to subsample per direction for computing truncation position. Default: %d' % default_nreads, type=int, default=default_nreads)
-    parser.add_argument('-o', help='Output directory. Default: current working directory', default=os.getcwd())
-    parser.add_argument('-v', help='Provide output directory to generate and visualizations')
+    parser.add_argument('-m', help='Aggregation method for computing truncation. Default: "median"', choices=['mean', 'median'], default='median', dest='aggmethod')
+    parser.add_argument('-n', help='Number of reads to subsample per direction for computing truncation position. Default: %d' % default_nreads, type=int, default=default_nreads, dest='nreads')
+    parser.add_argument('-o', help='Output directory. Default: current working directory', default=os.getcwd(), dest='outdir')
+    parser.add_argument('-v', help='Provide output directory to generate and visualizations', dest='viz_outdir')
 
     args = parser.parse_args(args)
     
     # Get filepaths
     filepaths = [os.path.abspath(os.path.join(args.i, f)) for f in os.listdir(args.i)]
 
+    # Extract inputs
+    inputs = args.__dict__
+    inputs['filepaths'] = filepaths
+
     # Run pipeline
-    project = truncPipeline(filepaths, args.f, args.r, args.mal, args.mae, args.m, args.n, args.o, args.v)
+    project = truncPipeline(**inputs)
