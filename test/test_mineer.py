@@ -31,7 +31,7 @@ class TestToy(TestCase):
 
 class TestFile(TestCase):
     def setUp(self):
-        record = Record(SeqIO.read('test/test_files/test_read.fastq', 'fastq'))
+        record = Record(SeqIO.read('test/test_files/test_read', 'fastq'))
         self.ee = record.ee
     
     def test_truncpos(self):

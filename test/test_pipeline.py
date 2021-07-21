@@ -1,10 +1,11 @@
 """Test pipeline"""
 
 from mineer.utils import Project
+from mineer.download_test_files import download
 from Bio import SeqIO
 from unittest import TestCase
 from mineer.pipeline import truncPipeline, mineer_cli
-import os, subprocess, shutil
+import os, shutil
 
 class TestPipelinePaired(TestCase):
     """Test whole pipeline on two samples"""
@@ -15,7 +16,7 @@ class TestPipelinePaired(TestCase):
         self.outdir2 = 'test/test_files/test2'
         self.viz_out = 'test/test_files/test_viz'
         # Download fastqs
-        subprocess.call(f'fastq-dump SRR9660307 SRR9660321 --split-files -O {self.tempdir}'.split())
+        download(self.tempdir)
         self.filepaths = [f'{os.path.join(self.tempdir, f)}' for f in os.listdir(self.tempdir)]
 
         self.fwd_format = '_1.fastq'
@@ -26,19 +27,19 @@ class TestPipelinePaired(TestCase):
     
     @classmethod
     def tearDownClass(self):
-        # shutil.rmtree(self.outdir1)
+        shutil.rmtree(self.outdir1)
         shutil.rmtree(self.outdir2)
         shutil.rmtree(self.viz_out)
     
-    def test_n_tries(self):
-        # Forward
-        self.assertEqual(self.project.fwd_n_tries, 5128)
-        # Reverse
-        self.assertEqual(self.project.rev_n_tries, 7223)
+    # def test_n_tries(self):
+    #     # Forward
+    #     self.assertEqual(self.project.fwd_n_tries, 5128)
+    #     # Reverse
+    #     self.assertEqual(self.project.rev_n_tries, 7223)
     
-    def test_trimpos(self):
-        self.assertEqual(self.project.fwd_pos.tolist(), [0, 301])
-        self.assertEqual(self.project.rev_pos.tolist(), [0, 164])
+    # def test_trimpos(self):
+    #     self.assertEqual(self.project.fwd_pos.tolist(), [0, 301])
+    #     self.assertEqual(self.project.rev_pos.tolist(), [0, 164])
 
     def test_passing_readpairs(self):
         self.assertEqual(len(self.project.passing_readpairs), 1872)
