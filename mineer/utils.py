@@ -66,6 +66,8 @@ class Read:
 
         # Truncation methods
         self.trimmed = None
+        self.pass_e = None
+        self.pass_l = None
         self.pass_qc = None
         self.bothpassing = None # Updated from ReadPair
 
@@ -85,15 +87,18 @@ class Read:
         trimmed_seqrecord = self.untrimmed.record[trimstart: trimend]
         self.trimmed = Record(trimmed_seqrecord)
         # Passes QC?
-        self.pass_qc = (self.trimmed.ee.mean() <= self.mae) & (self.trimmed.length == trimlen)
+        self.pass_e = self.trimmed.ee.mean() <= self.mae
+        self.pass_l = self.trimmed.length == trimlen
+        self.pass_qc = self.pass_e & self.pass_l
 
 
 class ReadPair:
     """A forward/rev read pair"""
-    def __init__(self, fwd_read: Read, rev_read:Read = None):
+    def __init__(self, fwd_read: Read, rev_read:Read = None, filter: str='both'):
         self.fwd_read = fwd_read
         self.rev_read = rev_read
         self.paired = bool(rev_read)
+        self.filter = filter
 
     def truncBoth(self, fwd_pos: tuple, rev_pos: tuple=None):
         """Truncate both read pairs"""
@@ -107,14 +112,23 @@ class ReadPair:
         # Check that read has been truncated, don't evaluate qc if not
         if not self.fwd_read.trimmed:
             return
-        qcs = [self.fwd_read.pass_qc]
+
+        reads = [self.fwd_read]
         if self.paired:
-            if not self.rev_read.trimmed:
-                return
-            qcs.append(self.rev_read.pass_qc)
+            reads.append(self.rev_read)
         
+        # Determine passing using `filter`
+        # Filter out readpairs where any read fails. Keep == all passing
+        if self.filter == 'any': 
+            bp = all([r.pass_qc for r in reads])
+        # Filter only when both pass. Keep == any passing 
+        if self.filter == 'both':
+            bp = any([r.pass_qc for r in reads])
+        # Don't filter any based on quality. Keep == all passing length
+        if self.filter == 'no':
+            bp = all([r.pass_l for r in reads])
+
         # Update method for each Read and for ReadPair
-        bp = all(qcs)
         self.fwd_read.bothpassing = bp
         if self.paired:
             self.rev_read.bothpassing = bp
