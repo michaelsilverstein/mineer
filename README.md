@@ -40,7 +40,7 @@ After installing `mineer` with `pip install .` within this directory, run the fo
     # Download some fastq files to `sample_files/`
     mineer-test-files
     # Run the pipeline with default parameters (minimal acceptable error=.01)
-    mineer -i test_files -f _1.fastq -r _1.fastq -o test_out -v sample_figs
+    mineer -i sample_files -f _1.fastq -r _2.fastq -n 5000 -o test_out -v sample_figs
 
 Once you run the pipeline, a report of each step will appear as they execute. Files containing truncated reads will appear in the directory specified with `-o`. Providing the `-v` flag will produce visualizations like the following of quality profiles of untrimmed reads and the distribution of truncation positions identified by minEER:
 ![quality-profiles](sample_figs/phred_profiles.png)
