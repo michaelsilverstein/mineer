@@ -35,14 +35,12 @@ Run `mineer -h` to view the following documentation:
     -v V              Provide output directory to generate and visualizations
 
 # Tutorial
-1. Download some fastq files
+After installing `mineer` with `pip install .` within this directory, run the following:
 
-    `fastq-dump SRR9660307 SRR9660321 --split-files -O test_files`
-
-2. Run  pipeline
-
-    `mineer -i test_files -f _1.fastq -r _1.fastq -o test_out -v sample_figs`
-
+    # Download some fastq files to `sample_files/`
+    mineer-test-files
+    # Run the pipeline with default parameters (minimal acceptable error=.01)
+    mineer -i test_files -f _1.fastq -r _1.fastq -o test_out -v sample_figs
 
 Once you run the pipeline, a report of each step will appear as they execute. Files containing truncated reads will appear in the directory specified with `-o`. Providing the `-v` flag will produce visualizations like the following of quality profiles of untrimmed reads and the distribution of truncation positions identified by minEER:
 ![quality-profiles](sample_figs/phred_profiles.png)
