@@ -13,4 +13,5 @@ setuptools.setup(
     description='Automated sequence truncation algorithm',
     packages=['mineer'],
     long_description_content_type = "text/markdown",
+    python_requires='>3.8'
 )
