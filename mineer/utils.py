@@ -193,7 +193,7 @@ class Project:
         self.fwd_format = fwd_format
         self.rev_format = rev_format
         suffixes = tuple([fmt for fmt in [fwd_format, rev_format] if fmt])
-        self.filepaths = [f for f in filepaths if f.endswith(suffixes)]
+        self.filepaths = sorted([f for f in filepaths if f.endswith(suffixes)])
         self.nreads = nreads
         self.mal = mal
         self.mae = mae
