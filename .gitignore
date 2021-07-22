@@ -1,7 +1,8 @@
 *.txt
 *.fastq*
-*.ipynb
+*.ipynb*
 .vscode*
 *egg-info*
 *.pyc
 .idea*
+test_files/*

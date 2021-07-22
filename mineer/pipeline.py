@@ -5,6 +5,7 @@ Github: https://github.com/michaelsilverstein/minEER
 AUTHOR: MICHAEL SILVERSTEIN
 EMAIL: michael.silverstein4@gmail.com
 """
+import argparse
 import random, os
 from .utils import Project, default_nreads, default_mal, default_mae
 from .viz import Viz
@@ -12,7 +13,7 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 import pandas as pd
 
 
-def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=default_mal, mae=default_mae, aggmethod: str='median', nreads=default_nreads, filter='both', outdir=None, viz_outdir=None, random_seed=None, write=True):
+def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=default_mal, mae=default_mae, aggmethod: str='median', nreads=default_nreads, filter='both', outdir=None, viz_outdir=None, no_shuffle=False, write=True):
     """
     Leave `rev_format` blank for single read mode
 
@@ -28,7 +29,7 @@ def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=defau
     """
     print('******** STARTING MINEER PIPELINE ********')
     # Create project
-    project = Project(filepaths, fwd_format, rev_format, nreads, mal, mae, aggmethod, filter, outdir, random_seed)
+    project = Project(filepaths, fwd_format, rev_format, nreads, mal, mae, aggmethod, filter, outdir, no_shuffle)
     # 1) Ingest reads
     project.getReadsandSamples()
     # Print inputs
@@ -105,6 +106,7 @@ def mineer_cli(args=None):
         * In all cases, reads that fall within truncation positions will be filtered""", choices=['any', 'both', 'no'], default='both')
     parser.add_argument('-o', help='Output directory. Default: current working directory', default=os.getcwd(), dest='outdir')
     parser.add_argument('-v', help='Provide output directory to generate and visualizations', dest='viz_outdir')
+    parser.add_argument('--test', help=argparse.SUPPRESS, action='store_true', default=False, dest='no_shuffle')
 
     args = parser.parse_args(args)
     
@@ -117,3 +119,9 @@ def mineer_cli(args=None):
 
     # Run pipeline
     project = truncPipeline(**inputs)
+
+    return project
+
+def run():
+    # Seperate function to access `project` when testing, but avoid returning object to command line
+    mineer_cli()
