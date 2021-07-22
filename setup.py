@@ -1,6 +1,9 @@
 import setuptools
 from mineer import __version__
 
+with open('README.md') as fh:
+    long_description = fh.read()
+
 setuptools.setup(
     name='mineer',
     version=__version__,
@@ -15,6 +18,7 @@ setuptools.setup(
     author_email='michael.silverstein4@gmail.com',
     description='Automated sequence truncation algorithm',
     packages=['mineer'],
+    long_description=long_description,
     long_description_content_type = "text/markdown",
-    python_requires='>3.8'
+    python_requires='>=3.8'
 )
