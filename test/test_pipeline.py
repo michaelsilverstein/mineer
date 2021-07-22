@@ -25,7 +25,7 @@ class TestPipeline(TestCase):
             fwd_format = '_1.fastq',
             rev_format = '_2.fastq',
             nreads = 1000,
-            random_seed = 123
+            no_shuffle = True
         )
     
         self.project = truncPipeline(**self.kwargs, viz_outdir=self.viz_out)
@@ -39,16 +39,16 @@ class TestPipeline(TestCase):
     
     def test_n_tries(self):
         # Forward
-        self.assertEqual(self.project.fwd_n_tries, 1031)
+        self.assertEqual(self.project.fwd_n_tries, 1015)
         # Reverse
-        self.assertEqual(self.project.rev_n_tries, 1643)
+        self.assertEqual(self.project.rev_n_tries, 1532)
     
     def test_trimpos(self):
         self.assertEqual(self.project.fwd_pos.tolist(), [0, 301])
-        self.assertEqual(self.project.rev_pos.tolist(), [0, 164])
+        self.assertEqual(self.project.rev_pos.tolist(), [0, 166])
 
     def test_passing_readpairs(self):
-        self.assertEqual(len(self.project.passing_readpairs), 4990)
+        self.assertEqual(len(self.project.passing_readpairs), 4975)
 
     def test_reads_same_len(self):
         self.assertTrue(all([r.trimmed.length == self.project.fwd_len for r in self.project.fwd_reads if r.pass_qc]))
@@ -65,14 +65,21 @@ class TestPipeline(TestCase):
             self.assertTrue(r1_fastqs == r2_fastqs == sample_passing_readpairs)
 
     def test_cli(self):
-        cmd = f'-i {self.tempdir} -f _1.fastq -r _2.fastq -n 1000 -o {self.cli_out}'
-        mineer_cli(cmd.split())
+        cmd = f'-i {self.tempdir} -f _1.fastq -r _2.fastq -n 1000 -o {self.cli_out} --test'
+        cli_project = mineer_cli(cmd.split())
+        p_rps = len([rp for s in self.project.samples for rp in s.readpairs])
+        c_rps = len([rp for s in cli_project.samples for rp in s.readpairs])
+        self.assertEqual(p_rps, c_rps)
+        self.assertEqual(len(cli_project.passing_readpairs), len(self.project.passing_readpairs))
+        self.assertListEqual(cli_project.fwd_pos.tolist(), self.project.fwd_pos.tolist())
+        self.assertListEqual(cli_project.rev_pos.tolist(), cli_project.rev_pos.tolist())
+        
         # Check files are there
         outfiles = sorted(os.listdir(self.cli_out))
         self.assertEqual(outfiles, ['SRR9660307_mineer_1.fastq', 'SRR9660307_mineer_2.fastq', 'SRR9660321_mineer_1.fastq', 'SRR9660321_mineer_2.fastq'])
 
     def test_viz(self):
-        self.assertEqual(os.listdir(self.viz_out), ['phred_profiles.png', 'trunc_dist.png'])
+        self.assertEqual(sorted(os.listdir(self.viz_out)), ['phred_profiles.png', 'trunc_dist.png'])
     
     def test_filter_no(self):
         kwargs = copy(self.kwargs)
@@ -84,7 +91,7 @@ class TestPipeline(TestCase):
         kwargs = copy(self.kwargs)
         kwargs['outdir'] = self.filter_out
         project = truncPipeline(**kwargs, filter='any')
-        self.assertEqual(len(project.passing_readpairs), 1872)
+        self.assertEqual(len(project.passing_readpairs), 1812)
     
     def test_single_end(self):
         kwargs = copy(self.kwargs)

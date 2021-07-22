@@ -139,6 +139,7 @@ class Sample:
     def __init__(self, name: str, fwd_file: File, rev_file: File=None, filter: str='both'):
         self.name = name
         self.fwd_file = fwd_file
+        self.readpairs = None
         if rev_file:
             self.rev_file = rev_file
             self.readpairs = [ReadPair(f, r, filter) for f, r in zip(self.fwd_file.reads, self.rev_file.reads)]
@@ -176,6 +177,7 @@ class Project:
         filter='no':   Do not filter out any reads based on EER
         * All reads with length < truncation length are always filtered (len(all reads) == truncation length)
     | outdir: Output directory
+    | no_shuffle: Don't shuffle reads before sampling (just for testing)
 
     Pipeline structure
     * Project: Collection of samples
@@ -184,7 +186,7 @@ class Project:
     * Read: Untrimmed and trimmed record
     * Record: A single SeqRecord with extracted data
     """
-    def __init__(self, filepaths: List[str], fwd_format: str, rev_format: str=None, nreads: int=default_nreads, mal: int=default_mal, mae: float=default_mae, aggmethod: str='median', filter: bool='both', outdir: str=None, random_seed: int=None):
+    def __init__(self, filepaths: List[str], fwd_format: str, rev_format: str=None, nreads: int=default_nreads, mal: int=default_mal, mae: float=default_mae, aggmethod: str='median', filter: bool='both', outdir: str=None, no_shuffle: bool=False):
         #TODO: MAKE SURE ABSPATH WORKS
         self.paired = bool(rev_format)
         assert fwd_format != rev_format, 'If "rev_format" is provided, it must differ from "fwd_format".\nOnly provide "fwd_format" for single end mode.'
@@ -203,18 +205,18 @@ class Project:
         if not outdir:
             outdir = os.getcwd()
         self.outdir = outdir
-        self.random_seed = random_seed
+        self.no_shuffle = no_shuffle
 
         # All reads
-        self.fwd_reads = []
-        self.rev_reads = []
-        self.samples = None
+        self.fwd_reads: List[Read] = []
+        self.rev_reads : List[Read]= []
+        self.samples: List[Sample] = None
         self._sample_mapping = None
         # Subset for minEER
-        self.fwd_sub = None
+        self.fwd_sub: List[Read] = None
         self.fwd_n_tries = None
         self.fwd_frac_passing = None
-        self.rev_sub = None
+        self.rev_sub: List[Read] = None
         self.rev_n_tries = None
         self.rev_frac_passing = None
         self.all_sub = []
@@ -223,7 +225,7 @@ class Project:
         self.fwd_len = None
         self.rev_pos = None
         self.rev_len = None
-        self.passing_readpairs = None
+        self.passing_readpairs: List[ReadPair] = None
 
     @functools.cached_property
     def files(self) -> List[File]:
@@ -271,10 +273,11 @@ class Project:
         args = ['paired', 'fwd_format', 'rev_format', 'nreads', 'mal', 'mae', 'aggmethod', 'filter', 'outdir']
         nfiles = len(self.files)
         nsamples = len(self.samples)
+        nreadpairs = len([rp for s in self.samples for rp in s.readpairs])
         pairs = {arg: getattr(self, arg) for arg in args}
-        pairs.update({'Files': nfiles, 'Samples': nsamples})
+        pairs.update({'Files': nfiles, 'Samples': nsamples, 'Read Pairs': nreadpairs})
 
-        order = args + ['Files', 'Samples']
+        order = args + ['Files', 'Samples', 'Read Pairs']
         input_report = alignedSpacing(pairs, 50, order)
 
         # Sample-pairs
@@ -290,10 +293,9 @@ class Project:
 
     def subsampleReads(self, reads: List[Read]):
         """Subsample `nreads` and keep those that pass minEER"""
-        if self.random_seed:
-            random.seed(self.random_seed)
-        # Shuffle reads
-        random.shuffle(reads)
+        if not self.no_shuffle: # ONLY EVER TRUE FOR TESTING
+            # Shuffle reads
+            random.shuffle(reads)
 
         # Keep track of passing
         read_count = 0

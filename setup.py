@@ -5,7 +5,7 @@ setuptools.setup(
     name='mineer',
     version=__version__,
     entry_points={'console_scripts':[
-        'mineer=mineer.pipeline:mineer_cli',
+        'mineer=mineer.pipeline:run',
         'mineer-test-files=mineer.download_test_files:download'
     ]},
     install_requires= ['numpy', 'pandas', 'biopython', 'seaborn', 'numba'],
