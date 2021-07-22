@@ -423,3 +423,17 @@ def alignedSpacing(pairs, width = 30, order=None):
         line = f'{k}:{spaces}{v}\n'
         text += line
     return text
+
+def readFastqFile(filepath: str) -> List[tuple]:
+    """Reads in a fastq file to a list of fastq reads"""
+    # TODO: TEST AGAINST Bio.SeqIO.QualityIO import FastqGeneralIterator
+    reads = []
+    read = []
+    with open(filepath) as fh:
+        for line in fh:
+            read.append(line.rstrip())
+            if len(read) == 4:
+                reads.append(tuple(read))
+                read = []
+    return reads
+            

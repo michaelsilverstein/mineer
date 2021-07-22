@@ -31,6 +31,7 @@ def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=defau
     # Create project
     project = Project(filepaths, fwd_format, rev_format, nreads, mal, mae, aggmethod, filter, outdir, no_shuffle)
     # 1) Ingest reads
+    print('Ingesting data...')
     project.getReadsandSamples()
     # Print inputs
     print('\t\t**** INPUTS ****')
