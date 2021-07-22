@@ -12,7 +12,7 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 import pandas as pd
 
 
-def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=default_mal, mae=default_mae, aggmethod: str='median', nreads=default_nreads, filter='both', outdir=None, viz_outdir=None, random_seed=None):
+def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=default_mal, mae=default_mae, aggmethod: str='median', nreads=default_nreads, filter='both', outdir=None, viz_outdir=None, random_seed=None, write=True):
     """
     Leave `rev_format` blank for single read mode
 
@@ -68,9 +68,10 @@ def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=defau
     print()
 
     # 5) Save truncated sequences
-    print('\t\t**** SAVING TRUNCATED FILES ****')
-    print(f'Saving files to "{project.outdir}" with format <sample>_mineer<suffix>')
-    project.writeFiles()
+    if write: # If working with truncPipeline() directly, may not want to write out files
+        print('\t\t**** SAVING TRUNCATED FILES ****')
+        print(f'Saving files to "{project.outdir}" with format <sample>_mineer<suffix>')
+        project.writeFiles()
 
     # 6) Produce viz if directory provided
     if viz_outdir:
