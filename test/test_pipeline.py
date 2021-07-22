@@ -39,9 +39,9 @@ class TestPipeline(TestCase):
     
     def test_n_tries(self):
         # Forward
-        self.assertEqual(self.project.fwd_n_tries, 1015)
+        self.assertEqual(self.project.fwd_n_tries, 1030)
         # Reverse
-        self.assertEqual(self.project.rev_n_tries, 1532)
+        self.assertEqual(self.project.rev_n_tries, 1643)
     
     def test_trimpos(self):
         self.assertEqual(self.project.fwd_pos.tolist(), [0, 301])
