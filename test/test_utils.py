@@ -1,7 +1,8 @@
 """
 Test mineer utils
 """
-from mineer.utils import Project
+from mineer.utils import Project, ReadPair, Read
+from Bio.SeqRecord import SeqRecord
 from unittest import TestCase
 from copy import copy
 
@@ -60,3 +61,49 @@ class TestProjectSingle(TestCase):
         expected = copy(self.kwargs['filepaths'])
         self.kwargs['filepaths'].extend(bad_paths)
         self.assertListEqual(self.project.filepaths, expected)
+
+class FakeRead:
+    # Hack the system
+    def __init__(self, pass_l, pass_e):
+        self.trimmed = True
+        self.pass_l = pass_l
+        self.pass_e = pass_e
+        self.pass_qc = self.pass_e & self.pass_l
+
+class TestReadPair(TestCase):
+    def test_filter_any(self):
+        # Bothpassing case
+        r1 = FakeRead(True, True)
+        r2 = FakeRead(True, True)
+        rp = ReadPair(r1, r2, filter='any')
+        self.assertTrue(rp.bothpassing)
+
+        # Failing
+        r2 = FakeRead(True, False)
+        rp = ReadPair(r1, r2, 'any')
+        self.assertFalse(rp.bothpassing)
+    
+    def test_filter_both(self):
+        # Bothpassing case
+        r1 = FakeRead(True, True)
+        r2 = FakeRead(True, False)
+        rp = ReadPair(r1, r2, filter='both')
+        self.assertTrue(rp.bothpassing)
+
+        # Failing
+        r1 = FakeRead(True, False)
+        rp = ReadPair(r1, r2, 'both')
+        self.assertFalse(rp.bothpassing)
+
+    def test_filter_no(self):
+        # Bothpassing case
+        r1 = FakeRead(True, False)
+        r2 = FakeRead(True, False)
+        rp = ReadPair(r1, r2, filter='no')
+        self.assertTrue(rp.bothpassing)
+
+        # Failing
+        r1 = FakeRead(False, True)
+        r2 = FakeRead(False, False)
+        rp = ReadPair(r1, r2, 'no')
+        self.assertFalse(rp.bothpassing)     

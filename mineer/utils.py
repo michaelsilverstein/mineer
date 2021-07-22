@@ -66,6 +66,8 @@ class Read:
 
         # Truncation methods
         self.trimmed = None
+        self.pass_e = None
+        self.pass_l = None
         self.pass_qc = None
         self.bothpassing = None # Updated from ReadPair
 
@@ -85,15 +87,18 @@ class Read:
         trimmed_seqrecord = self.untrimmed.record[trimstart: trimend]
         self.trimmed = Record(trimmed_seqrecord)
         # Passes QC?
-        self.pass_qc = (self.trimmed.ee.mean() <= self.mae) & (self.trimmed.length == trimlen)
+        self.pass_e = self.trimmed.ee.mean() <= self.mae
+        self.pass_l = self.trimmed.length == trimlen
+        self.pass_qc = self.pass_e & self.pass_l
 
 
 class ReadPair:
     """A forward/rev read pair"""
-    def __init__(self, fwd_read: Read, rev_read:Read = None):
+    def __init__(self, fwd_read: Read, rev_read:Read = None, filter: str='both'):
         self.fwd_read = fwd_read
         self.rev_read = rev_read
         self.paired = bool(rev_read)
+        self.filter = filter
 
     def truncBoth(self, fwd_pos: tuple, rev_pos: tuple=None):
         """Truncate both read pairs"""
@@ -101,32 +106,29 @@ class ReadPair:
         if self.paired:
             self.rev_read.truncate(rev_pos)
     
-    def checkQC(self):
-        """Check that both reads are passing qc"""
-        # Check that read has been truncated, don't evaluate qc if not
-        if not self.fwd_read.trimmed:
-            return
-        qcs = [self.fwd_read.pass_qc]
-        if self.paired:
-            if not self.rev_read.trimmed:
-                return
-            qcs.append(self.rev_read.pass_qc)
-        self.bothpassing = all(qcs)
-    
     @property
     def bothpassing(self):
         """Check that both reads are passing qc"""
         # Check that read has been truncated, don't evaluate qc if not
         if not self.fwd_read.trimmed:
             return
-        qcs = [self.fwd_read.pass_qc]
+
+        reads = [self.fwd_read]
         if self.paired:
-            if not self.rev_read.trimmed:
-                return
-            qcs.append(self.rev_read.pass_qc)
+            reads.append(self.rev_read)
         
+        # Determine passing using `filter`
+        # Filter out readpairs where any read fails. Keep == all passing
+        if self.filter == 'any': 
+            bp = all([r.pass_qc for r in reads])
+        # Filter only when both pass. Keep == any passing 
+        if self.filter == 'both':
+            bp = any([r.pass_qc for r in reads])
+        # Don't filter any based on quality. Keep == all passing length
+        if self.filter == 'no':
+            bp = all([r.pass_l for r in reads])
+
         # Update method for each Read and for ReadPair
-        bp = all(qcs)
         self.fwd_read.bothpassing = bp
         if self.paired:
             self.rev_read.bothpassing = bp
@@ -134,14 +136,14 @@ class ReadPair:
 
 class Sample:
     """Readpairs for all reads in both files of a sample (for paired reads). Assumes reads are in order for each pair"""
-    def __init__(self, name: str, fwd_file: File, rev_file: File=None):
+    def __init__(self, name: str, fwd_file: File, rev_file: File=None, filter: str='both'):
         self.name = name
         self.fwd_file = fwd_file
         if rev_file:
             self.rev_file = rev_file
-            self.readpairs = [ReadPair(f, r) for f, r in zip(self.fwd_file.reads, self.rev_file.reads)]
+            self.readpairs = [ReadPair(f, r, filter) for f, r in zip(self.fwd_file.reads, self.rev_file.reads)]
         else:
-            self.readpairs = [ReadPair(f) for f in self.fwd_file.reads]
+            self.readpairs = [ReadPair(f, filter=filter) for f in self.fwd_file.reads]
     
 
 def phred2ee(phred):
@@ -168,6 +170,11 @@ class Project:
     | mal: Maximum acceptable length (default: 100)
     | mae: Maximum acceptable error (default: 1e-2)
     | aggmethod: Method to aggregate truncation positions across reads, either 'median' (default) or 'mean'
+    | filter: 
+        filter='any':  Filter out all readpairs where any read where EER > mae
+        filter='both': Only filter out readpairs where both reads EER > mae [Default]
+        filter='no':   Do not filter out any reads based on EER
+        * All reads with length < truncation length are always filtered (len(all reads) == truncation length)
     | outdir: Output directory
 
     Pipeline structure
@@ -177,7 +184,7 @@ class Project:
     * Read: Untrimmed and trimmed record
     * Record: A single SeqRecord with extracted data
     """
-    def __init__(self, filepaths: List[str], fwd_format: str, rev_format: str=None, nreads: int=default_nreads, mal: int=default_mal, mae: float=default_mae, aggmethod: str='median', outdir: str=None):
+    def __init__(self, filepaths: List[str], fwd_format: str, rev_format: str=None, nreads: int=default_nreads, mal: int=default_mal, mae: float=default_mae, aggmethod: str='median', filter: bool='both', outdir: str=None, random_seed: int=None):
         #TODO: MAKE SURE ABSPATH WORKS
         self.paired = bool(rev_format)
         assert fwd_format != rev_format, 'If "rev_format" is provided, it must differ from "fwd_format".\nOnly provide "fwd_format" for single end mode.'
@@ -191,9 +198,12 @@ class Project:
         assert aggmethod in ['mean', 'median'], '"aggmethod" must be either "median" (default) or "mean"'
         self.aggmethod = aggmethod
         self.aggfunc = np.median if aggmethod == 'median' else np.mean
+        assert filter in ['any', 'both', 'no'], '"filter" must be either "any", "both", or "no"'
+        self.filter = filter
         if not outdir:
             outdir = os.getcwd()
         self.outdir = outdir
+        self.random_seed = random_seed
 
         # All reads
         self.fwd_reads = []
@@ -248,7 +258,7 @@ class Project:
                 getattr(self, attr).append(read)
 
         # Create sample objects
-        Samples = [Sample(sample, files['f'], files['r']) for sample, files in samples.items()]
+        Samples = [Sample(sample, files['f'], files['r'], self.filter) for sample, files in samples.items()]
         self.samples = Samples
         self._sample_mapping = samples
 
@@ -258,7 +268,7 @@ class Project:
         if not self.samples:
             self.getReadsandSamples()
         # Basic inputs
-        args = ['paired', 'fwd_format', 'rev_format', 'nreads', 'mal', 'mae', 'aggmethod', 'outdir']
+        args = ['paired', 'fwd_format', 'rev_format', 'nreads', 'mal', 'mae', 'aggmethod', 'filter', 'outdir']
         nfiles = len(self.files)
         nsamples = len(self.samples)
         pairs = {arg: getattr(self, arg) for arg in args}
@@ -280,6 +290,8 @@ class Project:
 
     def subsampleReads(self, reads: List[Read]):
         """Subsample `nreads` and keep those that pass minEER"""
+        if self.random_seed:
+            random.seed(self.random_seed)
         # Shuffle reads
         random.shuffle(reads)
 

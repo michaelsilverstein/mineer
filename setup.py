@@ -8,7 +8,7 @@ setuptools.setup(
         'mineer=mineer.pipeline:mineer_cli',
         'mineer-test-files=mineer.download_test_files:download'
     ]},
-    install_requires= ['numpy', 'pandas', 'biopython', 'seaborn'],
+    install_requires= ['numpy', 'pandas', 'biopython', 'seaborn', 'numba'],
     url='',
     license='MIT',
     author='michaelsilverstein',
