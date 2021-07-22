@@ -9,13 +9,13 @@ import numpy as np
 import pandas as pd
 import os, functools, random
 
-default_nreads = 10000
+default_nreads = 5000
 default_mal = 100
 default_mae = 1e-2
 
 class File:
     """Fastq file"""
-    def __init__(self, filepath: str, direction: str, suffix: str=None, mal: int=default_mal, mae: float=default_mae):
+    def __init__(self, filepath: str, direction: str, mal: int, mae: float, suffix: str=None):
         self.filepath = filepath
         assert direction in ['f', 'r'], 'Direction must be "f" or "r"'
         self.direction = direction
@@ -27,7 +27,7 @@ class File:
     @functools.cached_property
     def reads(self):
         """Load all reads"""
-        return [Read(r, self, self.mal, self.mae) for r in SeqIO.parse(self.filepath, 'fastq')]
+        return [Read(r, self.mal, self.mae, self) for r in SeqIO.parse(self.filepath, 'fastq')]
 
 
 class Record:
@@ -52,7 +52,7 @@ class Record:
     
 class Read:
     """Untrimmed and Trimmed data on read"""
-    def __init__(self, seqrecord: SeqRecord, file: File=None, mal: int=default_mal, mae: float=default_mae):
+    def __init__(self, seqrecord: SeqRecord, mal: int, mae: float, file: File=None):
         self.untrimmed = Record(seqrecord)
         self.id = seqrecord.id
         self.file = file
@@ -234,7 +234,7 @@ class Project:
         for path in self.filepaths:
             direction = 'f' if path.endswith(self.fwd_format) else 'r'
             suffix = self.fwd_format if direction == 'f' else self.rev_format
-            file = File(path, direction, suffix, self.mal, self.mae)
+            file = File(path, direction, self.mal, self.mae, suffix)
             fs.append(file)
         return fs
 
