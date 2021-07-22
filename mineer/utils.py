@@ -184,7 +184,7 @@ class Project:
     * Read: Untrimmed and trimmed record
     * Record: A single SeqRecord with extracted data
     """
-    def __init__(self, filepaths: List[str], fwd_format: str, rev_format: str=None, nreads: int=default_nreads, mal: int=default_mal, mae: float=default_mae, aggmethod: str='median', filter: bool='both', outdir: str=None):
+    def __init__(self, filepaths: List[str], fwd_format: str, rev_format: str=None, nreads: int=default_nreads, mal: int=default_mal, mae: float=default_mae, aggmethod: str='median', filter: bool='both', outdir: str=None, random_seed: int=None):
         #TODO: MAKE SURE ABSPATH WORKS
         self.paired = bool(rev_format)
         assert fwd_format != rev_format, 'If "rev_format" is provided, it must differ from "fwd_format".\nOnly provide "fwd_format" for single end mode.'
@@ -203,6 +203,7 @@ class Project:
         if not outdir:
             outdir = os.getcwd()
         self.outdir = outdir
+        self.random_seed = random_seed
 
         # All reads
         self.fwd_reads = []
@@ -289,6 +290,8 @@ class Project:
 
     def subsampleReads(self, reads: List[Read]):
         """Subsample `nreads` and keep those that pass minEER"""
+        if self.random_seed:
+            random.seed(self.random_seed)
         # Shuffle reads
         random.shuffle(reads)
 

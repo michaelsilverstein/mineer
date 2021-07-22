@@ -28,7 +28,7 @@ def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=defau
     """
     print('******** STARTING MINEER PIPELINE ********')
     # Create project
-    project = Project(filepaths, fwd_format, rev_format, nreads, mal, mae, aggmethod, filter, outdir)
+    project = Project(filepaths, fwd_format, rev_format, nreads, mal, mae, aggmethod, filter, outdir, random_seed)
     # 1) Ingest reads
     project.getReadsandSamples()
     # Print inputs
@@ -43,8 +43,6 @@ def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=defau
     # 2) Subsample
     print('\t\t**** RUNNING MINEER ALGORITHM ****')
     print('Running minEER on a subset of %d reads per direction...' % nreads)
-    if random_seed:
-        random.seed(random_seed)
     project.subsampleAll()
     print('Complete.')
     print()
