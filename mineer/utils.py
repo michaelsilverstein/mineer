@@ -1,6 +1,7 @@
 """
 minEER utilites
 """
+from io import StringIO
 from typing import List
 from .mineer import minEER
 from Bio.SeqRecord import SeqRecord
@@ -27,34 +28,44 @@ class File:
     @functools.cached_property
     def reads(self):
         """Load all reads"""
-        return [Read(r, self.mal, self.mae, self) for r in SeqIO.parse(self.filepath, 'fastq')]
+        return [Read(r, self.mal, self.mae, self) for r in RawFastqGenerator(self.filepath)]
 
 
 class Record:
-    """A single read"""
-    def __init__(self, seqrecord):
-        self.record = seqrecord
-        
+    """A single read (input: raw fastq string)"""
+    def __init__(self, raw: str, record:SeqRecord=None):
+        self.raw = raw
+        self._record = record
+    
     @functools.cached_property
+    def record(self):
+        """Get seqrecord"""
+        if self._record:
+            return self._record
+        else:
+            with StringIO(self.raw) as s:
+                return SeqIO.read(s, 'fastq')
+
+    @property
     def length(self):
         """Read length"""
         return len(self.record)
 
-    @functools.cached_property
+    @property
     def phred(self):
         """Extract phred quality scores"""
         return self.record.letter_annotations['phred_quality']
     
-    @functools.cached_property
+    @property
     def ee(self):
         """Get expected error scores"""
         return phred2ee(self.phred)
     
 class Read:
-    """Untrimmed and Trimmed data on read"""
-    def __init__(self, seqrecord: SeqRecord, mal: int, mae: float, file: File=None):
-        self.untrimmed = Record(seqrecord)
-        self.id = seqrecord.id
+    """Untrimmed and Trimmed data on read (input: raw untrimmed fastq string)"""
+    def __init__(self, untrimmed_raw: str, mal: int, mae: float, file: File=None):
+        self.untrimmed = Record(untrimmed_raw)
+        # self.id = seqrecord.id
         self.file = file
         self.mal = mal
         self.mae = mae
@@ -85,7 +96,7 @@ class Read:
         trimlen = trimend - trimstart
         # Truncate
         trimmed_seqrecord = self.untrimmed.record[trimstart: trimend]
-        self.trimmed = Record(trimmed_seqrecord)
+        self.trimmed = Record(None, trimmed_seqrecord)
         # Passes QC?
         self.pass_e = self.trimmed.ee.mean() <= self.mae
         self.pass_l = self.trimmed.length == trimlen
@@ -145,16 +156,6 @@ class Sample:
             self.readpairs = [ReadPair(f, r, filter) for f, r in zip(self.fwd_file.reads, self.rev_file.reads)]
         else:
             self.readpairs = [ReadPair(f, filter=filter) for f in self.fwd_file.reads]
-    
-
-def phred2ee(phred):
-    """
-    Convert a Phred score to an expected error probability
-    ee = 10 ^ (-P/10)
-    """
-    phred = np.array(phred)
-    ee = np.power(10, -phred / 10)
-    return ee
 
 class Project:
     """
@@ -412,6 +413,16 @@ class Project:
         for f in self.files:
             self.writeFile(f)
 
+
+def phred2ee(phred):
+    """
+    Convert a Phred score to an expected error probability
+    ee = 10 ^ (-P/10)
+    """
+    phred = np.array(phred)
+    ee = np.power(10, -phred / 10)
+    return ee
+
 def alignedSpacing(pairs, width = 30, order=None):
     """Generate text with aligned spacing for each element of `pairs` of `width`"""
     text = ''
@@ -424,16 +435,15 @@ def alignedSpacing(pairs, width = 30, order=None):
         text += line
     return text
 
-def readFastqFile(filepath: str) -> List[tuple]:
+def RawFastqGenerator(filepath):
     """Reads in a fastq file to a list of fastq reads"""
-    # TODO: TEST AGAINST Bio.SeqIO.QualityIO import FastqGeneralIterator
-    reads = []
-    read = []
+    read = ''
+    count = 0
     with open(filepath) as fh:
         for line in fh:
-            read.append(line.rstrip())
-            if len(read) == 4:
-                reads.append(tuple(read))
-                read = []
-    return reads
-            
+            read += line
+            count += 1
+            if count == 4:
+                yield read
+                count = 0
+                read = ''
