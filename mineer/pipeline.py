@@ -109,7 +109,7 @@ print('******** COMPLETE ********')
 def mineer_cli(args=None):
     """Command line interface for running minEER"""
     parser = ArgumentParser(formatter_class=RawTextHelpFormatter, description=__doc__)
-    parser.add_argument('-i', help='Path to directory containing all (unzipped!) fastq files for a single project', required=True, dest='filepaths')
+    parser.add_argument('-i', help='Path to directory containing all fastq files (raw or gzipped) for a single project', required=True, dest='filepaths')
     parser.add_argument('-f', help="""Forward read filename suffix for paired fastqs or single read filename suffix
         Ex. sample1_1.fastq
             -f _1.fastq
