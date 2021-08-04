@@ -27,8 +27,12 @@ class Viz:
         self.nreads = nreads
     
         self.kwargs = dict(col='direction', col_order=['f', 'r'], height=5, aspect=1.5)
+
     @functools.cached_property
     def subreads(self):
+        # Subsample reads if they haven't been yet
+        if not self.project.fwd_sub:
+            self.project.subsampleAll()
         srs = self.project.fwd_sub[:self.nreads]
         if self.project.paired:
             srs.extend(self.project.rev_sub[:self.nreads])
@@ -99,7 +103,7 @@ class Viz:
         plt.close()
 
         # Generate viz if trim positions are available
-        if self.project.trimpos_mineer:
+        if self.project.fwd_sub:
             trun_filepath = os.path.join(self.outdir, 'trunc_dist')
             self.plotTruncPosDist
             plt.savefig(trun_filepath, facecolor='w', bbox_inches='tight')

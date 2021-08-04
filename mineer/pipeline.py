@@ -104,8 +104,9 @@ def vizOnlyPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=def
     v = Viz(project, viz_outdir)
     v.genFigs()
     print(f'Figures have been saved to "{viz_outdir}"')
-
-print('******** COMPLETE ********')
+    print('******** COMPLETE ********')
+    return project
+    
 def mineer_cli(args=None):
     """Command line interface for running minEER"""
     parser = ArgumentParser(formatter_class=RawTextHelpFormatter, description=__doc__)
@@ -138,13 +139,18 @@ def mineer_cli(args=None):
 
     # Extract inputs
     inputs = args.__dict__
+    viz_only = args.__dict__.pop('viz_only')
     inputs['filepaths'] = filepaths
 
     # If viz only
-    if args.viz_only:
-        vizOnlyPipeline(**inputs)
+    if viz_only:
+        # Set viz_outdir to current directory if empty
+        if not inputs['viz_outdir']:
+            inputs['viz_outdir'] = '.'
+        project = vizOnlyPipeline(**inputs)
     # Run pipeline
-    project = truncPipeline(**inputs)
+    else:
+        project = truncPipeline(**inputs)
 
     return project
 
