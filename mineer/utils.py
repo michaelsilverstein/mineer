@@ -7,7 +7,7 @@ from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 import numpy as np
 import pandas as pd
-import os, functools, random
+import os, functools, random, gzip
 
 default_nreads = 5000
 default_mal = 100
@@ -27,7 +27,14 @@ class File:
     @functools.cached_property
     def reads(self):
         """Load all reads"""
-        return [Read(r, self.mal, self.mae, self) for r in SeqIO.parse(self.filepath, 'fastq')]
+        # Try normal read, if fails try gzip
+        try:
+            rs = [Read(r, self.mal, self.mae, self) for r in SeqIO.parse(self.filepath, 'fastq')]
+        except UnicodeDecodeError:
+            with gzip.open(self.filepath, 'rt') as fh:
+                rs = [Read(r, self.mal, self.mae, self) for r in SeqIO.parse(fh, 'fastq')]
+
+        return rs
 
 
 class Record:
