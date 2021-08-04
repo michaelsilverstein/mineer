@@ -26,6 +26,8 @@ class TestProjectPaired(TestCase):
     def test_project_ingest(self):
         for arg, val in self.kwargs.items():
             project_val = getattr(self.project, arg)
+            if arg == 'outdir':
+                val = os.path.abspath(val)
             self.assertEqual(val, project_val)
     
     def test_ignore_bad_files(self):
@@ -51,6 +53,8 @@ class TestProjectSingle(TestCase):
     def test_project_ingest(self):
         for arg, val in self.kwargs.items():
             project_val = getattr(self.project, arg)
+            if arg == 'outdir':
+                val = os.path.abspath(val)
             self.assertEqual(val, project_val)
     
     def test_not_paired(self):

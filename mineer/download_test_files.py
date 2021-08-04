@@ -18,7 +18,7 @@ def download(outdir=None):
         
     for url in urls:
         filename = os.path.basename(url)
-        outpath = os.path.join(outdir, filename)
+        outpath = os.path.abspath(os.path.join(outdir, filename))
         print(f'Downloading {filename} to {outpath}')
         with requests.get(url) as resp:
             with open(outpath, 'wb') as fh:

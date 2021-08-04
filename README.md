@@ -13,11 +13,21 @@ After installing `mineer`, run the following:
     # Download some fastq files to `sample_files/`
     mineer-test-files
     # Run the pipeline with default parameters (minimal acceptable error=.01)
-    mineer -i sample_files -f _1.fastq -r _2.fastq -n 5000 -o test_out -v sample_figs
+    mineer -i sample_files -f _1.fastq -r _2.fastq -o test_out -v sample_figs
 
 Once you run the pipeline, a report of each step will appear as they execute. Files containing truncated reads will appear in the directory specified with `-o`. Providing the `-v` flag will produce visualizations like the following of quality profiles of untrimmed reads and the distribution of truncation positions identified by minEER:
 ![quality-profiles](sample_figs/phred_profiles.png)
 ![trunc-dist](sample_figs/trunc_dist.png)
+
+If you just want to compute truncation positions without writing out truncated files (which can take a while), then you can run mineer without writing files by not providing an output directory (no `- o` argument):
+
+    mineer -i sample_files -f _1.fastq -r _2.fastq 
+
+To produce visualizations without writing out truncated files, you can provide a directory with `-v` (again, without `-o`):
+
+    mineer -i sample_files -f _1.fastq -r _2.fastq -v sample_figs
+Note that these examples use default parameters, which can be inspected with `mineer -h`.
+
 # Pipeline
 
 Method:
