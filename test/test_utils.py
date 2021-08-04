@@ -1,10 +1,10 @@
 """
 Test mineer utils
 """
-from mineer.utils import Project, ReadPair, Read
-from Bio.SeqRecord import SeqRecord
+from mineer.utils import File, Project, ReadPair
 from unittest import TestCase
 from copy import copy
+import gzip, os
 
 class TestProjectPaired(TestCase):
     def setUp(self):
@@ -106,4 +106,23 @@ class TestReadPair(TestCase):
         r1 = FakeRead(False, True)
         r2 = FakeRead(False, False)
         rp = ReadPair(r1, r2, 'no')
-        self.assertFalse(rp.bothpassing)     
+        self.assertFalse(rp.bothpassing)
+
+class TestFile(TestCase):
+    def setUp(self):
+        # Gzip test read
+        self.gzip_path = 'test/test_files/test_read.gz'
+        self.raw_path = 'test/test_files/test_read'
+        with gzip.open(self.gzip_path, 'w') as gh:
+            with open(self.raw_path, 'rb') as fh:
+                gh.write(fh.read())
+    
+    def tearDown(self) -> None:
+        os.remove(self.gzip_path)
+        
+    def test_unzip(self):
+        """Tests detection of gzip and that gzip is same as raw"""
+        raw_read = File(self.raw_path, 'f', None, None).reads[0].untrimmed.record.seq
+        zipped_read = File(self.gzip_path, 'f', None, None).reads[0].untrimmed.record.seq
+
+        self.assertEqual(raw_read, zipped_read)
