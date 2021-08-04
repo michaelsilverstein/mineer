@@ -27,6 +27,7 @@ To produce visualizations without writing out truncated files, you can provide a
 
     mineer -i sample_files -f _1.fastq -r _2.fastq -v sample_figs
 Note that these examples use default parameters, which can be inspected with `mineer -h`.
+
 # Pipeline
 
 Method:
