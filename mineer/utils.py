@@ -208,7 +208,10 @@ class Project:
         self.aggfunc = np.median if aggmethod == 'median' else np.mean
         assert filter in ['any', 'both', 'no'], '"filter" must be either "any", "both", or "no"'
         self.filter = filter
-        self.outdir = os.path.abspath(outdir)
+        if outdir:
+            self.outdir = os.path.abspath(outdir)
+        else:
+            self.outdir = None
         self.no_shuffle = no_shuffle
 
         # All reads
