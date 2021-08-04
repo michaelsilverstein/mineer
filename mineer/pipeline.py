@@ -60,16 +60,17 @@ def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=defau
     globpos_report = project._reportGlobalPos
     print(globpos_report)
     print()
-
+    
+    # Only truncate and save if `write`
+    if write:
     # 4) Truncate all reads to global positions and filter out read pairs that don't pass QC
-    print('\t\t**** TRUNCATING ALL FILES TO GLOBAL POSITIONS ****')
-    project.truncAndFilter()
-    truncstats = project._reportTruncStats
-    print(truncstats)
-    print()
+        print('\t\t**** TRUNCATING ALL FILES TO GLOBAL POSITIONS ****')
+        project.truncAndFilter()
+        truncstats = project._reportTruncStats
+        print(truncstats)
+        print()
 
-    # 5) Save truncated sequences
-    if write: # If working with truncPipeline() directly, may not want to write out files
+        # 5) Save truncated sequences
         print('\t\t**** SAVING TRUNCATED FILES ****')
         print(f'Saving files to "{project.outdir}" with format <sample>_mineer<suffix>')
         project.writeFiles()
