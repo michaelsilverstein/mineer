@@ -5,15 +5,15 @@ Github: https://github.com/michaelsilverstein/minEER
 AUTHOR: MICHAEL SILVERSTEIN
 EMAIL: michael.silverstein4@gmail.com
 """
-import argparse
-import random, os
+import argparse, os
+from typing import List
 from .utils import Project, default_nreads, default_mal, default_mae
 from .viz import Viz
 from argparse import ArgumentParser, RawTextHelpFormatter
 import pandas as pd
 
 
-def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=default_mal, mae=default_mae, aggmethod: str='median', nreads=default_nreads, filter='both', outdir=None, viz_outdir=None, no_shuffle=False, write=True):
+def truncPipeline(filepaths: List[str], fwd_format: str, rev_format = None, mal=default_mal, mae=default_mae, aggmethod: str='median', nreads=default_nreads, filter='both', outdir=None, viz_outdir=None, no_shuffle=False, write=True):
     """
     Leave `rev_format` blank for single read mode
 
@@ -84,6 +84,28 @@ def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=defau
 
     return project
 
+def vizOnlyPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=default_mal, mae=default_mae, aggmethod: str='median', nreads=default_nreads, filter='both', outdir=None, viz_outdir=None, no_shuffle=False, write=True):    
+    """Generate quality profile visualization without truncating"""
+    print('******** GENERATING QUALITY PROFILE ********')
+    # Create project
+    project = Project(filepaths, fwd_format, rev_format, nreads, mal, mae, aggmethod, filter, outdir, no_shuffle)
+    # 1) Ingest reads
+    project.getReadsandSamples()
+    # Print inputs
+    print('\t\t**** INPUTS ****')
+    input_report, sample_map_df = project._reportInputs
+    print(input_report)
+    print('SAMPLE-FILE PAIRS')
+    with pd.option_context('display.max_rows', None):
+        print(sample_map_df)
+    print()
+    # Generate figure
+    print('\t\t**** GENERATING FIGURES ****')
+    v = Viz(project, viz_outdir)
+    v.genFigs()
+    print(f'Figures have been saved to "{viz_outdir}"')
+
+print('******** COMPLETE ********')
 def mineer_cli(args=None):
     """Command line interface for running minEER"""
     parser = ArgumentParser(formatter_class=RawTextHelpFormatter, description=__doc__)
@@ -106,6 +128,7 @@ def mineer_cli(args=None):
         * In all cases, reads that fall within truncation positions will be filtered""", choices=['any', 'both', 'no'], default='both')
     parser.add_argument('-o', help='Output directory. Default: current working directory', default=os.getcwd(), dest='outdir')
     parser.add_argument('-v', help='Provide output directory to generate and visualizations', dest='viz_outdir')
+    parser.add_argument('--viz-only', help='Generate quality profile without truncating files', action='store_true')
     parser.add_argument('--test', help=argparse.SUPPRESS, action='store_true', default=False, dest='no_shuffle')
 
     args = parser.parse_args(args)
@@ -117,6 +140,9 @@ def mineer_cli(args=None):
     inputs = args.__dict__
     inputs['filepaths'] = filepaths
 
+    # If viz only
+    if args.viz_only:
+        vizOnlyPipeline(**inputs)
     # Run pipeline
     project = truncPipeline(**inputs)
 

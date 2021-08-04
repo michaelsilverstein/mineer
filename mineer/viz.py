@@ -98,8 +98,9 @@ class Viz:
         plt.savefig(phred_filepath, facecolor='w', bbox_inches='tight')
         plt.close()
 
-        # Generate truncation position plot
-        trun_filepath = os.path.join(self.outdir, 'trunc_dist')
-        self.plotTruncPosDist
-        plt.savefig(trun_filepath, facecolor='w', bbox_inches='tight')
-        plt.close()
+        # Generate viz if trim positions are available
+        if self.project.trimpos_mineer:
+            trun_filepath = os.path.join(self.outdir, 'trunc_dist')
+            self.plotTruncPosDist
+            plt.savefig(trun_filepath, facecolor='w', bbox_inches='tight')
+            plt.close()
