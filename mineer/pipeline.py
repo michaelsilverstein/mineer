@@ -105,7 +105,7 @@ def mineer_cli(args=None):
         --filter both [Default]: Only filter read pairs where both reads have EER > mae
         --filter no: Do not filter read pairs based on EER
         * In all cases, reads that fall within truncation positions will be filtered""", choices=['any', 'both', 'no'], default='both')
-    parser.add_argument('-o', help='Output directory. Default: current working directory', default=os.getcwd(), dest='outdir')
+    parser.add_argument('-o', help='Output directory. Default: current working directory', dest='outdir')
     parser.add_argument('-v', help='Provide output directory to generate and visualizations', dest='viz_outdir')
     parser.add_argument('--test', help=argparse.SUPPRESS, action='store_true', default=False, dest='no_shuffle')
 
@@ -117,6 +117,7 @@ def mineer_cli(args=None):
     # Extract inputs
     inputs = args.__dict__
     inputs['filepaths'] = filepaths
+    inputs['write'] = bool(args.outdir)
 
     # Run pipeline
     project = truncPipeline(**inputs)

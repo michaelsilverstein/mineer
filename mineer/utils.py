@@ -194,7 +194,6 @@ class Project:
     * Record: A single SeqRecord with extracted data
     """
     def __init__(self, filepaths: List[str], fwd_format: str, rev_format: str=None, nreads: int=default_nreads, mal: int=default_mal, mae: float=default_mae, aggmethod: str='median', filter: bool='both', outdir: str=None, no_shuffle: bool=False):
-        #TODO: MAKE SURE ABSPATH WORKS
         self.paired = bool(rev_format)
         assert fwd_format != rev_format, 'If "rev_format" is provided, it must differ from "fwd_format".\nOnly provide "fwd_format" for single end mode.'
         self.fwd_format = fwd_format
@@ -209,9 +208,7 @@ class Project:
         self.aggfunc = np.median if aggmethod == 'median' else np.mean
         assert filter in ['any', 'both', 'no'], '"filter" must be either "any", "both", or "no"'
         self.filter = filter
-        if not outdir:
-            outdir = os.getcwd()
-        self.outdir = outdir
+        self.outdir = os.path.abspath(outdir)
         self.no_shuffle = no_shuffle
 
         # All reads
