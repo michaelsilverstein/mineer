@@ -6,3 +6,5 @@
 *.pyc
 .idea*
 test_files/*
+htmlcov/*
+.coverage
