@@ -5,7 +5,7 @@
 The minEER pipeline (see documentation with `mineer -h` after installing) operates on an entire set of files from a single project. Assuming that all reads from a given direction (forward or reverse for paired reads) share a "similar" quality profile, the minEER pipeline runs the algorithm on a subsample of reads and to determine global truncation positions (where to start and end each read). All reads are then truncated according to these global positions and reads that fail to meet the user defined EER and minimum sequence lenght thresholds.
 
 # Install
-Install with pip install mineer and then run `mineer -h` to view the input documentation and to test that installation worked properly.
+Install with `pip install mineer` and then run `mineer -h` to view the input documentation and to test that installation worked properly.
 
 # Tutorial
 After installing `mineer`, run the following:
