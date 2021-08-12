@@ -338,16 +338,35 @@ class Project:
         passing_reads = []
 
         # Get passing reads until `nreads` is reached
-
-        for read in reads:
-            read_count += 1
-            read.runMineer()
-            if read.pass_qc_mineer:
-                passing_reads.append(read)
-            
-            # Break if `nreads` has been reached
-            if len(passing_reads) == self.nreads:
+        chunk_size = self.nreads
+        start = 0
+        while True:
+            # Get positions to chunk
+            end = start + chunk_size
+            chunk = reads[start: end]
+            if not chunk:
                 break
+            # Update read count
+            read_count += len(chunk)
+            # Run mineer on this chunk
+            self.runMineer(chunk)
+            # Collect passing
+            for r in chunk:
+                if r.pass_qc_mineer:
+                    passing_reads.append(r)
+            # Calculate number of reads remaining
+            remaining = self.nreads - len(passing_reads)
+            # If we don't need anymore reads, break
+            if remaining <= 0:
+                break
+            # Otherwise, get the next chunk with size(remaining)
+            else:
+                chunk_size = remaining
+                # Inefficient to have a chunk smaller than 1000
+                if chunk_size < 1000:
+                    chunk_size = 1000
+                start = end
+
         return read_count, passing_reads
     
     def subsampleAll(self):
