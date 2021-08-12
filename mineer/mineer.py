@@ -7,7 +7,7 @@ EMAIL: michael.silverstein4@gmail.com
 import numpy as np
 from numba import jit
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True)
 def eerspace(ee, mal):
     """
     Compute expected error rate space where each row is starting position and each column is an ending position
@@ -22,8 +22,9 @@ def eerspace(ee, mal):
     cumsum_ee = np.cumsum(ee)
     # Get normalizing vector to compute EER at each position
     norm = np.arange(n_pos) + 1
+    norm_inv = 1.0 / norm
     # Initialize first start
-    eer_space[0, mal:] = (cumsum_ee / norm)[mal:]
+    eer_space[0, mal:] = (cumsum_ee * norm_inv)[mal:]
 
     # For each starting position
     for start in range(1, n_pos - mal):
@@ -31,7 +32,7 @@ def eerspace(ee, mal):
         cumsum_ee_start = cumsum_ee[start:]
 
         # Calculate the expected errors from this start position
-        eers = (cumsum_ee_start - cumsum_ee[start - 1]) / norm[:-start]
+        eers = (cumsum_ee_start - cumsum_ee[start - 1]) * norm_inv[:-start]
         # Only take the expected errors starting at the minimum acceptable length
         eers_mal = eers[mal:]
         # Update the search space

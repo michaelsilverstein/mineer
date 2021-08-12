@@ -7,7 +7,8 @@ from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 import numpy as np
 import pandas as pd
-import os, functools, random, gzip
+from joblib import Parallel, delayed
+import os, functools, random, gzip, multiprocessing
 
 default_nreads = 5000
 default_mal = 100
@@ -69,6 +70,7 @@ class Read:
         # minEER methods
         self.mineer = False
         self.pass_qc_mineer = None
+        self._trimpos_mineer = None
         self.trimpos_mineer = None
 
         # Truncation methods
@@ -77,14 +79,32 @@ class Read:
         self.pass_l = None
         self.pass_qc = None
         self.bothpassing = None # Updated from ReadPair
+    
+    @property
+    def trimpos_mineer(self):
+        return self._trimpos_mineer
+    
+    @trimpos_mineer.setter
+    def trimpos_mineer(self, trimpos):
+        self._trimpos_mineer = trimpos
+
+    @property
+    def pass_qc_mineer(self):
+        if self.mineer:
+            return not self.trimpos_mineer[0] is None
+        else:
+            return None
+    
+    @property
+    def mineer(self):
+        """Indicate if mineer has been run"""
+        return bool(self.pass_qc_mineer)
 
     def runMineer(self):
         """Run minEER on Read"""
         # Run minEER to get truncation positions
         trimpos_mineer = minEER(self.untrimmed.ee, self.mal, self.mae)
-        self.trimpos_mineer = trimpos_mineer
-        self.mineer = True
-        self.pass_qc_mineer = not trimpos_mineer[0] is None
+        self._trimpos_mineer = trimpos_mineer
 
     def truncate(self, trimpos):
         """Truncate sequence given """
@@ -185,6 +205,7 @@ class Project:
         * All reads with length < truncation length are always filtered (len(all reads) == truncation length)
     | outdir: Output directory
     | no_shuffle: Don't shuffle reads before sampling (just for testing)
+    | nproc: Number of processors to use for parallel operations [Default: -1 (all processors)]
 
     Pipeline structure
     * Project: Collection of samples
@@ -193,7 +214,7 @@ class Project:
     * Read: Untrimmed and trimmed record
     * Record: A single SeqRecord with extracted data
     """
-    def __init__(self, filepaths: List[str], fwd_format: str, rev_format: str=None, nreads: int=default_nreads, mal: int=default_mal, mae: float=default_mae, aggmethod: str='median', filter: bool='both', outdir: str=None, no_shuffle: bool=False):
+    def __init__(self, filepaths: List[str], fwd_format: str, rev_format: str=None, nreads: int=default_nreads, mal: int=default_mal, mae: float=default_mae, aggmethod: str='median', filter: bool='both', outdir: str=None, no_shuffle: bool=False, nproc: int=-1):
         self.paired = bool(rev_format)
         assert fwd_format != rev_format, 'If "rev_format" is provided, it must differ from "fwd_format".\nOnly provide "fwd_format" for single end mode.'
         self.fwd_format = fwd_format
@@ -213,6 +234,7 @@ class Project:
         else:
             self.outdir = None
         self.no_shuffle = no_shuffle
+        self.nproc = nproc
 
         # All reads
         self.fwd_reads: List[Read] = []
@@ -297,6 +319,16 @@ class Project:
         sample_map_df = pd.DataFrame(sample_map_data).set_index('Sample')
 
         return input_report, sample_map_df
+    
+    def runMineer(self, reads: List[Read]):
+        """Run mineer on a list of reads"""
+        # Extract expected error profiles
+        ees = [read.untrimmed.ee for read in reads]
+        # Run through mineer
+        trimposes = Parallel(self.nproc)(delayed(minEER)(ee, self.mal) for ee in ees)
+        # Update reads
+        for read, trimpos in zip(reads, trimposes):
+            read.trimpos_mineer = trimpos
 
     def subsampleReads(self, reads: List[Read]):
         """Subsample `nreads` and keep those that pass minEER"""
@@ -309,6 +341,7 @@ class Project:
         passing_reads = []
 
         # Get passing reads until `nreads` is reached
+        
         for read in reads:
             read_count += 1
             read.runMineer()
