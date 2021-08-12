@@ -95,7 +95,7 @@ class Read:
     @property
     def mineer(self):
         """Indicate if mineer has been run"""
-        return bool(self.pass_qc_mineer)
+        return self.pass_qc_mineer is not None
 
     def runMineer(self):
         """Run minEER on Read"""
