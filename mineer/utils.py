@@ -68,10 +68,7 @@ class Read:
         self.mae = mae
 
         # minEER methods
-        self.mineer = False
-        self.pass_qc_mineer = None
         self._trimpos_mineer = None
-        self.trimpos_mineer = None
 
         # Truncation methods
         self.trimmed = None
@@ -90,7 +87,7 @@ class Read:
 
     @property
     def pass_qc_mineer(self):
-        if self.mineer:
+        if self.trimpos_mineer is not None:
             return not self.trimpos_mineer[0] is None
         else:
             return None
@@ -341,7 +338,7 @@ class Project:
         passing_reads = []
 
         # Get passing reads until `nreads` is reached
-        
+
         for read in reads:
             read_count += 1
             read.runMineer()
