@@ -85,8 +85,9 @@ class Viz:
         g = sns.displot(trimpos_melted, x='pos', hue='position', palette='Set1', **self.kwargs)
         # Add lines for global truncation positions
         for ax, trimpos in zip(g.axes.ravel(), [self.project.fwd_pos, self.project.rev_pos]):
-            for p in trimpos:
-                ax.axvline(p, color='gold', lw=4)
+            if trimpos is not None:
+                for p in trimpos:
+                    ax.axvline(p, color='gold', lw=4)
 
         g.set_xlabels('Position')
         return g
