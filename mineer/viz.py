@@ -24,6 +24,8 @@ class Viz:
         self.outdir = outdir
         if nreads > project.nreads:
             nreads = project.nreads
+        if nreads > 10000: # Probs will just take long than necessary
+            nreads = 10000
         self.nreads = nreads
     
         self.kwargs = dict(col='direction', col_order=['f', 'r'], height=5, aspect=1.5)

@@ -8,10 +8,10 @@ from Bio import SeqIO
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
-import os, functools, random, gzip, multiprocessing
+import os, functools, random, gzip
 
-default_nreads = 5000
-default_mal = 100
+default_nreads = 15000
+default_mal = 150
 default_mae = 1e-2
 
 class File:
@@ -191,7 +191,8 @@ class Project:
         fwd_format = '_1.fastq'
         rev_format = '_2.fastq'
         * If single ended, do not define rev_format
-    | nreads: Number of reads to sample for computing truncation positions (default: 10000)
+    | nreads: Minimum number of reads to subsample for computing global truncation positions
+
     | mal: Maximum acceptable length (default: 100)
     | mae: Maximum acceptable error (default: 1e-2)
     | aggmethod: Method to aggregate truncation positions across reads, either 'median' (default) or 'mean'
@@ -322,7 +323,7 @@ class Project:
         # Extract expected error profiles
         ees = [read.untrimmed.ee for read in reads]
         # Run through mineer
-        trimposes = Parallel(self.nproc)(delayed(minEER)(ee, self.mal) for ee in ees)
+        trimposes = Parallel(self.nproc)(delayed(minEER)(ee, self.mal, self.mae) for ee in ees)
         # Update reads
         for read, trimpos in zip(reads, trimposes):
             read.trimpos_mineer = trimpos
@@ -338,15 +339,18 @@ class Project:
         passing_reads = []
 
         # Get passing reads until `nreads` is reached
-        chunk_size = self.nreads
+
+        # Assume only 50% of reads in a chunk will pass
+        chunk_size = int(self.nreads * 1.5)
         start = 0
         while True:
             # Get positions to chunk
             end = start + chunk_size
             chunk = reads[start: end]
+            # If an empty list, then no more reads to try
             if not chunk:
                 break
-            # Update read count
+            # Update number of reads tried
             read_count += len(chunk)
             # Run mineer on this chunk
             self.runMineer(chunk)
@@ -361,10 +365,12 @@ class Project:
                 break
             # Otherwise, get the next chunk with size(remaining)
             else:
-                chunk_size = remaining
+                # Assuming only 50% of reads in a chunk will pass
+                chunk_size = int(remaining * 1.5)
                 # Inefficient to have a chunk smaller than 1000
                 if chunk_size < 1000:
                     chunk_size = 1000
+                # Start off where we ended
                 start = end
 
         return read_count, passing_reads
@@ -376,7 +382,7 @@ class Project:
         self.all_sub.extend(self.fwd_sub)
         if self.paired:
             self.rev_n_tries, self.rev_sub = self.subsampleReads(self.rev_reads)
-            self.rev_frac_passing = len(self.fwd_sub) / self.rev_n_tries
+            self.rev_frac_passing = len(self.rev_sub) / self.rev_n_tries
             self.all_sub.extend(self.rev_sub)
     
     @property
