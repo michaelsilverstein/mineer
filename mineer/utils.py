@@ -319,7 +319,7 @@ class Project:
         return input_report, sample_map_df
     
     def runMineer(self, reads: List[Read]):
-        """Run mineer on a list of reads"""
+        """Run mineer on a list of reads in parallel"""
         # Extract expected error profiles
         ees = [read.untrimmed.ee for read in reads]
         # Run through mineer
@@ -329,7 +329,7 @@ class Project:
             read.trimpos_mineer = trimpos
 
     def subsampleReads(self, reads: List[Read]):
-        """Subsample `nreads` and keep those that pass minEER"""
+        """Subsample up to `nreads` that pass minEER"""
         if not self.no_shuffle: # ONLY EVER TRUE FOR TESTING
             # Shuffle reads
             random.shuffle(reads)
@@ -340,8 +340,9 @@ class Project:
 
         # Get passing reads until `nreads` is reached
 
-        # Assume only 50% of reads in a chunk will pass
-        chunk_size = int(self.nreads * 1.5)
+        # Assume only 70% of reads in a chunk will pass
+        multiplier = 1.3
+        chunk_size = int(self.nreads * multiplier)
         start = 0
         while True:
             # Get positions to chunk
@@ -355,8 +356,10 @@ class Project:
             # Run mineer on this chunk
             self.runMineer(chunk)
             # Collect passing
+            curr_n_passing = 0
             for r in chunk:
                 if r.pass_qc_mineer:
+                    curr_n_passing += 1
                     passing_reads.append(r)
             # Calculate number of reads remaining
             remaining = self.nreads - len(passing_reads)
@@ -365,8 +368,10 @@ class Project:
                 break
             # Otherwise, get the next chunk with size(remaining)
             else:
-                # Assuming only 50% of reads in a chunk will pass
-                chunk_size = int(remaining * 1.5)
+                # Update multiplier by previous chunk's accuracy
+                error = curr_n_passing / chunk_size
+                multiplier = 1 + error
+                chunk_size = int(remaining * multiplier)
                 # Inefficient to have a chunk smaller than 1000
                 if chunk_size < 1000:
                     chunk_size = 1000
