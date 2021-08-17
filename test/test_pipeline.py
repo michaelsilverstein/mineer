@@ -59,8 +59,8 @@ class TestPipeline(TestCase):
         for sample in self.project.samples:
             outdir = self.kwargs['outdir']
             # Saved to file
-            r1_fastqs = len(list(dnaio.open(f'{outdir}/{sample.name}_mineer_1.fastq', 'fastq')))
-            r2_fastqs = len(list(dnaio.open(f'{outdir}/{sample.name}_mineer_2.fastq', 'fastq')))
+            r1_fastqs = len(list(dnaio.open(f'{outdir}/{sample.name}_mineer_1.fastq')))
+            r2_fastqs = len(list(dnaio.open(f'{outdir}/{sample.name}_mineer_2.fastq')))
             sample_passing_readpairs = len([rp for rp in sample.readpairs if rp.bothpassing])
             self.assertTrue(r1_fastqs == r2_fastqs == sample_passing_readpairs)
 
