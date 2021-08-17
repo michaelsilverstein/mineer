@@ -43,7 +43,7 @@ def truncPipeline(filepaths: list, fwd_format: str, rev_format = None, mal=defau
 
     # 2) Subsample
     print('\t\t**** RUNNING MINEER ALGORITHM ****')
-    print('Running minEER on a subset of %d reads per direction...' % nreads)
+    print('Running minEER on until a subset of at least %d reads per direction...' % nreads)
     project.subsampleAll()
     print('Complete.')
     print()

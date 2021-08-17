@@ -3,13 +3,13 @@ minEER utilites
 """
 from typing import List
 from .mineer import minEER
-import dnaio
 import numpy as np
 import pandas as pd
-import os, functools, random
+import os, functools, random, dnaio
+from joblib import Parallel, delayed
 
-default_nreads = 5000
-default_mal = 100
+default_nreads = 15000
+default_mal = 150
 default_mae = 1e-2
 
 class File:
@@ -62,9 +62,7 @@ class Read:
         self.mae = mae
 
         # minEER methods
-        self.mineer = False
-        self.pass_qc_mineer = None
-        self.trimpos_mineer = None
+        self._trimpos_mineer = None
 
         # Truncation methods
         self.trimmed = None
@@ -72,14 +70,32 @@ class Read:
         self.pass_l = None
         self.pass_qc = None
         self.bothpassing = None # Updated from ReadPair
+    
+    @property
+    def trimpos_mineer(self):
+        return self._trimpos_mineer
+    
+    @trimpos_mineer.setter
+    def trimpos_mineer(self, trimpos):
+        self._trimpos_mineer = trimpos
+
+    @property
+    def pass_qc_mineer(self):
+        if self.trimpos_mineer is not None:
+            return not self.trimpos_mineer[0] is None
+        else:
+            return None
+    
+    @property
+    def mineer(self):
+        """Indicate if mineer has been run"""
+        return self.pass_qc_mineer is not None
 
     def runMineer(self):
         """Run minEER on Read"""
         # Run minEER to get truncation positions
         trimpos_mineer = minEER(self.untrimmed.ee, self.mal, self.mae)
-        self.trimpos_mineer = trimpos_mineer
-        self.mineer = True
-        self.pass_qc_mineer = not trimpos_mineer[0] is None
+        self._trimpos_mineer = trimpos_mineer
 
     def truncate(self, trimpos):
         """Truncate sequence given """
@@ -169,7 +185,8 @@ class Project:
         fwd_format = '_1.fastq'
         rev_format = '_2.fastq'
         * If single ended, do not define rev_format
-    | nreads: Number of reads to sample for computing truncation positions (default: 10000)
+    | nreads: Minimum number of reads to subsample for computing global truncation positions
+
     | mal: Maximum acceptable length (default: 100)
     | mae: Maximum acceptable error (default: 1e-2)
     | aggmethod: Method to aggregate truncation positions across reads, either 'median' (default) or 'mean'
@@ -180,6 +197,7 @@ class Project:
         * All reads with length < truncation length are always filtered (len(all reads) == truncation length)
     | outdir: Output directory
     | no_shuffle: Don't shuffle reads before sampling (just for testing)
+    | nproc: Number of processors to use for parallel operations [Default: -1 (all processors)]
 
     Pipeline structure
     * Project: Collection of samples
@@ -188,7 +206,7 @@ class Project:
     * Read: Untrimmed and trimmed record
     * Record: A single SeqRecord with extracted data
     """
-    def __init__(self, filepaths: List[str], fwd_format: str, rev_format: str=None, nreads: int=default_nreads, mal: int=default_mal, mae: float=default_mae, aggmethod: str='median', filter: bool='both', outdir: str=None, no_shuffle: bool=False):
+    def __init__(self, filepaths: List[str], fwd_format: str, rev_format: str=None, nreads: int=default_nreads, mal: int=default_mal, mae: float=default_mae, aggmethod: str='median', filter: bool='both', outdir: str=None, no_shuffle: bool=False, nproc: int=-1):
         self.paired = bool(rev_format)
         assert fwd_format != rev_format, 'If "rev_format" is provided, it must differ from "fwd_format".\nOnly provide "fwd_format" for single end mode.'
         self.fwd_format = fwd_format
@@ -208,6 +226,7 @@ class Project:
         else:
             self.outdir = None
         self.no_shuffle = no_shuffle
+        self.nproc = nproc
 
         # All reads
         self.fwd_reads: List[Read] = []
@@ -292,9 +311,19 @@ class Project:
         sample_map_df = pd.DataFrame(sample_map_data).set_index('Sample')
 
         return input_report, sample_map_df
+    
+    def runMineer(self, reads: List[Read]):
+        """Run mineer on a list of reads in parallel"""
+        # Extract expected error profiles
+        ees = [read.untrimmed.ee for read in reads]
+        # Run through mineer
+        trimposes = Parallel(self.nproc)(delayed(minEER)(ee, self.mal, self.mae) for ee in ees)
+        # Update reads
+        for read, trimpos in zip(reads, trimposes):
+            read.trimpos_mineer = trimpos
 
     def subsampleReads(self, reads: List[Read]):
-        """Subsample `nreads` and keep those that pass minEER"""
+        """Subsample up to `nreads` that pass minEER"""
         if not self.no_shuffle: # ONLY EVER TRUE FOR TESTING
             # Shuffle reads
             random.shuffle(reads)
@@ -304,15 +333,45 @@ class Project:
         passing_reads = []
 
         # Get passing reads until `nreads` is reached
-        for read in reads:
-            read_count += 1
-            read.runMineer()
-            if read.pass_qc_mineer:
-                passing_reads.append(read)
-            
-            # Break if `nreads` has been reached
-            if len(passing_reads) == self.nreads:
+
+        # Assume only 70% of reads in a chunk will pass
+        multiplier = 1.3
+        chunk_size = int(self.nreads * multiplier)
+        start = 0
+        while True:
+            # Get positions to chunk
+            end = start + chunk_size
+            chunk = reads[start: end]
+            # If an empty list, then no more reads to try
+            if not chunk:
                 break
+            # Update number of reads tried
+            read_count += len(chunk)
+            # Run mineer on this chunk
+            self.runMineer(chunk)
+            # Collect passing
+            curr_n_passing = 0
+            for r in chunk:
+                if r.pass_qc_mineer:
+                    curr_n_passing += 1
+                    passing_reads.append(r)
+            # Calculate number of reads remaining
+            remaining = self.nreads - len(passing_reads)
+            # If we don't need anymore reads, break
+            if remaining <= 0:
+                break
+            # Otherwise, get the next chunk with size(remaining)
+            else:
+                # Update multiplier by previous chunk's accuracy
+                error = curr_n_passing / chunk_size
+                multiplier = 1 + error
+                chunk_size = int(remaining * multiplier)
+                # Inefficient to have a chunk smaller than 1000
+                if chunk_size < 1000:
+                    chunk_size = 1000
+                # Start off where we ended
+                start = end
+
         return read_count, passing_reads
     
     def subsampleAll(self):
@@ -322,7 +381,7 @@ class Project:
         self.all_sub.extend(self.fwd_sub)
         if self.paired:
             self.rev_n_tries, self.rev_sub = self.subsampleReads(self.rev_reads)
-            self.rev_frac_passing = len(self.fwd_sub) / self.rev_n_tries
+            self.rev_frac_passing = len(self.rev_sub) / self.rev_n_tries
             self.all_sub.extend(self.rev_sub)
     
     @property
