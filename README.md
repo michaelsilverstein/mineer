@@ -32,7 +32,7 @@ Note that these examples use default parameters, which can be inspected with `mi
 
 Method:
 
-1. Ingest files and recognize pairs based on file names
+1. Ingest files and recognize pairs based on file names (using [`xopen`](https://github.com/pycompression/xopen))
 2. Run minEER on subset of reads
 3. Determine global truncation positions
 4. Truncate all reads to global positions and filter out read pairs that don't pass QC (currently requires longest length)
