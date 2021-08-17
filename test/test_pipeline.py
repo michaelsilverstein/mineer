@@ -1,7 +1,7 @@
 """Test pipeline"""
 
 from mineer.download_test_files import download
-from Bio import SeqIO
+import dnaio
 from unittest import TestCase
 from mineer.pipeline import truncPipeline, mineer_cli
 import os, shutil
@@ -59,8 +59,8 @@ class TestPipeline(TestCase):
         for sample in self.project.samples:
             outdir = self.kwargs['outdir']
             # Saved to file
-            r1_fastqs = len(list(SeqIO.parse(f'{outdir}/{sample.name}_mineer_1.fastq', 'fastq')))
-            r2_fastqs = len(list(SeqIO.parse(f'{outdir}/{sample.name}_mineer_2.fastq', 'fastq')))
+            r1_fastqs = len(list(dnaio.open(f'{outdir}/{sample.name}_mineer_1.fastq')))
+            r2_fastqs = len(list(dnaio.open(f'{outdir}/{sample.name}_mineer_2.fastq')))
             sample_passing_readpairs = len([rp for rp in sample.readpairs if rp.bothpassing])
             self.assertTrue(r1_fastqs == r2_fastqs == sample_passing_readpairs)
 
