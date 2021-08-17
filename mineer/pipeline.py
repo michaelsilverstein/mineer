@@ -6,7 +6,7 @@ AUTHOR: MICHAEL SILVERSTEIN
 EMAIL: michael.silverstein4@gmail.com
 """
 import argparse
-import random, os
+import os
 from .utils import Project, default_nreads, default_mal, default_mae
 from .viz import Viz
 from argparse import ArgumentParser, RawTextHelpFormatter

@@ -3,11 +3,10 @@ minEER utilites
 """
 from typing import List
 from .mineer import minEER
-from Bio.SeqRecord import SeqRecord
-from Bio import SeqIO
+import dnaio
 import numpy as np
 import pandas as pd
-import os, functools, random, gzip
+import os, functools, random
 
 default_nreads = 5000
 default_mal = 100
@@ -27,19 +26,15 @@ class File:
     @functools.cached_property
     def reads(self):
         """Load all reads"""
-        # Try normal read, if fails try gzip
-        try:
-            rs = [Read(r, self.mal, self.mae, self) for r in SeqIO.parse(self.filepath, 'fastq')]
-        except UnicodeDecodeError:
-            with gzip.open(self.filepath, 'rt') as fh:
-                rs = [Read(r, self.mal, self.mae, self) for r in SeqIO.parse(fh, 'fastq')]
-
+        rs = []
+        with dnaio.open(self.filepath) as fh:
+            for r in fh:
+                rs.append(Read(r, self.mal, self.mae, self))
         return rs
-
 
 class Record:
     """A single read"""
-    def __init__(self, seqrecord):
+    def __init__(self, seqrecord: dnaio._core.Sequence):
         self.record = seqrecord
         
     @functools.cached_property
@@ -50,18 +45,18 @@ class Record:
     @functools.cached_property
     def phred(self):
         """Extract phred quality scores"""
-        return self.record.letter_annotations['phred_quality']
+        return [x-33 for x in self.record.qualities.encode()]
     
     @functools.cached_property
     def ee(self):
         """Get expected error scores"""
-        return phred2ee(self.phred)
+        return np.array([10 ** (-(x-33)/10)  for x in self.record.qualities.encode()])
     
 class Read:
     """Untrimmed and Trimmed data on read"""
-    def __init__(self, seqrecord: SeqRecord, mal: int, mae: float, file: File=None):
+    def __init__(self, seqrecord: dnaio._core.Sequence, mal: int, mae: float, file: File=None):
         self.untrimmed = Record(seqrecord)
-        self.id = seqrecord.id
+        self.id = seqrecord.name
         self.file = file
         self.mal = mal
         self.mae = mae
@@ -410,9 +405,10 @@ class Project:
         if not os.path.isdir(self.outdir):
             os.makedirs(self.outdir)
         # Gather truncated reads where pairs pass qc
-        truncated = [r.trimmed.record for r in file.reads if r.bothpassing]
-        # Save
-        SeqIO.write(truncated, outpath, 'fastq')
+        with dnaio.FastqWriter(outpath) as fh:
+            for r in file.reads:
+                if r.bothpassing:
+                    fh.write(r.trimmed.record)
             
     def writeFiles(self):
         """Write all truncated files"""

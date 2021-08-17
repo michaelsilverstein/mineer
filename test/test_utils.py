@@ -126,7 +126,7 @@ class TestFile(TestCase):
         
     def test_unzip(self):
         """Tests detection of gzip and that gzip is same as raw"""
-        raw_read = File(self.raw_path, 'f', None, None).reads[0].untrimmed.record.seq
-        zipped_read = File(self.gzip_path, 'f', None, None).reads[0].untrimmed.record.seq
+        raw_read = File(self.raw_path, 'f', None, None).reads[0].untrimmed.record.sequence
+        zipped_read = File(self.gzip_path, 'f', None, None).reads[0].untrimmed.record.sequence
 
         self.assertEqual(raw_read, zipped_read)
