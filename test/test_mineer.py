@@ -6,7 +6,7 @@ import numba
 numba.config.DISABLE_JIT = True
 from mineer.mineer import eerspace, minEER
 from mineer.utils import Record
-from Bio import SeqIO
+import dnaio
 
 class TestToy(TestCase):
     def setUp(self):
@@ -31,7 +31,9 @@ class TestToy(TestCase):
 
 class TestFile(TestCase):
     def setUp(self):
-        record = Record(SeqIO.read('test/test_files/test_read', 'fastq'))
+        with dnaio.open('test/test_files/test_read') as fh:
+            for r in fh:
+                record = Record(r)
         self.ee = record.ee
     
     def test_truncpos(self):
