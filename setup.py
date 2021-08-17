@@ -11,7 +11,7 @@ setuptools.setup(
         'mineer=mineer.pipeline:run',
         'mineer-test-files=mineer.download_test_files:download'
     ]},
-    install_requires= ['numpy', 'pandas', 'biopython', 'seaborn', 'numba', 'joblib', 'dnaio'],
+    install_requires= ['numpy', 'pandas', 'seaborn', 'numba', 'joblib', 'dnaio'],
     url='',
     license='MIT',
     author='michaelsilverstein',
