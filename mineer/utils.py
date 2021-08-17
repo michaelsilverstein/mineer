@@ -11,6 +11,8 @@ from joblib import Parallel, delayed
 default_nreads = 15000
 default_mal = 150
 default_mae = 1e-2
+# phred score offset
+table = {x: x-33 for x in range(33, 75)}
 
 class File:
     """Fastq file"""
@@ -45,7 +47,7 @@ class Record:
     @functools.cached_property
     def phred(self):
         """Extract phred quality scores"""
-        return [x-33 for x in self.record.qualities.encode()]
+        return list(self.record.qualities.translate(table).endcode())
     
     @functools.cached_property
     def ee(self):
