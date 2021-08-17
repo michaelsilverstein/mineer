@@ -5,7 +5,7 @@ import numpy as np
 import numba
 numba.config.DISABLE_JIT = True
 from mineer.mineer import eerspace, minEER
-from mineer.utils import Read, Record
+from mineer.utils import Record
 import dnaio
 
 class TestToy(TestCase):
