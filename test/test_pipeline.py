@@ -39,16 +39,16 @@ class TestPipeline(TestCase):
     
     def test_n_tries(self):
         # Forward
-        self.assertEqual(self.project.fwd_n_tries, 1500)
+        self.assertEqual(self.project.fwd_n_tries, 1300)
         # Reverse
-        self.assertEqual(self.project.rev_n_tries, 2500)
+        self.assertEqual(self.project.rev_n_tries, 3300)
     
     def test_trimpos(self):
         self.assertEqual(self.project.fwd_pos.tolist(), [0, 301])
-        self.assertEqual(self.project.rev_pos.tolist(), [0, 187])
+        self.assertEqual(self.project.rev_pos.tolist(), [0, 186])
 
     def test_passing_readpairs(self):
-        self.assertEqual(len(self.project.passing_readpairs), 4820)
+        self.assertEqual(len(self.project.passing_readpairs), 4828)
 
     def test_reads_same_len(self):
         self.assertTrue(all([r.trimmed.length == self.project.fwd_len for r in self.project.fwd_reads if r.pass_qc]))
@@ -91,7 +91,7 @@ class TestPipeline(TestCase):
         kwargs = copy(self.kwargs)
         kwargs['outdir'] = self.filter_out
         project = truncPipeline(**kwargs, filter='any')
-        self.assertEqual(len(project.passing_readpairs), 1293)
+        self.assertEqual(len(project.passing_readpairs), 1326)
     
     def test_single_end(self):
         kwargs = copy(self.kwargs)
