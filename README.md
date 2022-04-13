@@ -4,6 +4,8 @@
 
 The minEER pipeline (see documentation with `mineer -h` after installing) operates on an entire set of files from a single project. Assuming that all reads from a given direction (forward or reverse for paired reads) share a "similar" quality profile, the minEER pipeline runs the algorithm on a subsample of reads and to determine global truncation positions (where to start and end each read). All reads are then truncated according to these global positions and reads that fail to meet the user defined EER and minimum sequence lenght thresholds.
 
+Two critical parameters to the minEER pipeline are the minimum acceptable length (MAL, set with flag `--mal`, default=100) and the maximum acceptable error (MAE, set with flag `--mae`, default=.01). See the [Algorithm](#algorithm) section below for an example of how these parameters operate.
+
 # Install
 Install with `pip install mineer` and then run `mineer -h` to view the input documentation and to test that installation worked properly.
 
@@ -40,7 +42,7 @@ Method:
 6. Produce visualizations, if visualization output directory provided
 
 # Algorithm
-For a given read, minEER works by finding the longest subsequence (`mal`) with an average error rate below some user-defined value (`mae`). The figure below illustrates the search space minEER explores to find the optimal subsequence with `mal = 100` and `mae = 1e-3`
+For a given read, minEER works by finding the longest subsequence (`mal`) with an average error rate below some user-defined value (`mae`). The figure below illustrates the search space minEER explores to find the optimal subsequence with MAL=100 and MAE=1e-3. The expected error (EER) is calculated for each subsequence (at each start and end position) for all subsequences with length >= MAL and then the longest subsequences with error <= MAE is chosen.
 ![image](https://user-images.githubusercontent.com/22639569/163231167-31b515e0-8dad-4793-877c-49ac6bb09f9b.png)
 # Contributing
 Run tests with `python -m unittest` or `pytest`
