@@ -42,7 +42,7 @@ Method:
 6. Produce visualizations, if visualization output directory provided
 
 # Algorithm
-For a given read, minEER works by finding the longest subsequence (`mal`) with an average error rate below some user-defined value (`mae`). The figure below illustrates the search space minEER explores to find the optimal subsequence with MAL=100 and MAE=1e-3. The expected error (EER) is calculated for each subsequence (at each start and end position) for all subsequences with length >= MAL and then the longest subsequences with error <= MAE is chosen.
+For a given read, minEER works by finding the longest subsequence (with length => MAL) with an expected error rate <= MAE. The figure below illustrates the search space minEER explores to find the optimal subsequence with MAL=100 and MAE=1e-3. The expected error (EER) is calculated for each subsequence (at each start and end position) for all subsequences with length >= MAL (notice that all end positions are >= MAL) and then the longest subsequences with an expected error rate <= MAE is chosen (C shows all subsequence positions with expected error rate <= MAE in yellow).
 ![image](https://user-images.githubusercontent.com/22639569/163231167-31b515e0-8dad-4793-877c-49ac6bb09f9b.png)
 # Contributing
 Run tests with `python -m unittest` or `pytest`
