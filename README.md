@@ -39,6 +39,9 @@ Method:
 5. Save truncated sequences
 6. Produce visualizations, if visualization output directory provided
 
+# Algorithm
+For a given read, minEER works by finding the longest subsequence (`mal`) with an average error rate below some user-defined value (`mae`). The figure below illustrates the search space minEER explores to find the optimal subsequence with `mal = 100` and `mae = 1e-3`
+![image](https://user-images.githubusercontent.com/22639569/163231167-31b515e0-8dad-4793-877c-49ac6bb09f9b.png)
 # Contributing
 Run tests with `python -m unittest` or `pytest`
 
